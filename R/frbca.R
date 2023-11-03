@@ -257,15 +257,16 @@ frbca <- function(eal, cost, params) {
 #' Plot FR-BCA Outputs
 #'
 #' @description
-#' Sensitivity analysis plot for FR-BCA outputs
+#' Sensitivity analysis plot for FR-BCA outputs, for fixed story height and structural system
 #'
 #' @importFrom dplyr filter select left_join rename
 #' @importFrom tidyr pivot_wider
 #' @import ggplot2
 #'
 #'
-#' @param model A model
-#' @param params A list of parameters
+#' @param output Output from `frbca()`
+#' @param n_floors Number of stories (for figure title)
+#' @param system Name of structural system being plotted (default: "RCMF")
 #'
 #' @return Updated model table including PV(Cost)
 #' @export
@@ -287,18 +288,18 @@ plot_frbca <- function(output, n_floors=4, system='RCMF') {
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
   plot.sen <- sen %>%
-    ggplot() +
-    geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
+    ggplot2::ggplot() +
+    ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
-    geom_segment(aes(x=parameter, xend=parameter, y=bcr-0.001, yend=bcr+0.001),
+    ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr-0.001, yend=bcr+0.001),
                  linewidth = 5, colour = "black") +
-    geom_hline(yintercept=1, colour='red') +
-    coord_flip() +
-    facet_wrap(~model, ncol=1) +
+    ggplot2::geom_hline(yintercept=1, colour='red') +
+    ggplot2::coord_flip() +
+    ggplot2::facet_wrap(~model, ncol=1) +
     ## geom_hline(data=rcmf, aes(yintercept=bcr)) +
-    theme_light() +
-    theme(legend.position='bottom') +
-    labs(
+    ggplot2::theme_light() +
+    ggplot2::theme(legend.position='bottom') +
+    ggplot2::labs(
       title=paste(label_begin, paste0(n_floors, '-story'), system, label_end),
       x='Parameter',
       y='Benefit-cost ratio')

@@ -7,13 +7,15 @@
 plot_frbca(output, n_floors = 4, system = "RCMF")
 }
 \arguments{
-\item{model}{A model}
+\item{output}{Output from \code{frbca()}}
 
-\item{params}{A list of parameters}
+\item{n_floors}{Number of stories (for figure title)}
+
+\item{system}{Name of structural system being plotted (default: "RCMF")}
 }
 \value{
 Updated model table including PV(Cost)
 }
 \description{
-Sensitivity analysis plot for FR-BCA outputs
+Sensitivity analysis plot for FR-BCA outputs, for fixed story height and structural system
 }
