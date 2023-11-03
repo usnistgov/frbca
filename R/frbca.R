@@ -220,9 +220,26 @@ bca <- function(model, params) {
 }
 
 
+###
+## Purpose:
+## Wrapper that conducts BCA for each set of models in list
+###
+#' Conduct FR-BCA with sensitivity analysis
+#'
+#' @description
+#' Wrapper that conducts BCA for each set of models in list
+#'
+#' @importFrom dplyr bind_rows
+#'
+#'
+#' @param eal Table of Expected Annualized Losses (EAL)
+#' @param cost Table of Structural, Nonstructural, and Total Construction Costs
+#' @param params List of analysis parameters
+#'
+#' @return Table including EAL, Costs, Benefits, FR-BCA Outputs (BCR and NPV)
+#' @export
+#'
 frbca <- function(eal, cost, params) {
-    ## Purpose:
-    ## Wrapper that conducts BCA for each set of models in list
     models <- preprocess_model(eal, cost, params[['parameters']][['base']])
     for (i in 1:length(models)) {
         models[[i]] <- bca(models[[i]], params)
@@ -233,8 +250,27 @@ frbca <- function(eal, cost, params) {
     return(models)
 }
 
+###
+## Purpose:
+## Post-process data and generate plot for sensitivity analysis
+###
+#' Plot FR-BCA Outputs
+#'
+#' @description
+#' Sensitivity analysis plot for FR-BCA outputs
+#'
+#' @importFrom dplyr filter select left_join rename
+#' @importFrom tidyr pivot_wider
+#' @import ggplot2
+#'
+#'
+#' @param model A model
+#' @param params A list of parameters
+#'
+#' @return Updated model table including PV(Cost)
+#' @export
+#'
 plot_frbca <- function(output, n_floors=4, system='RCMF') {
-  ## Purpose: post-process data and generate plot for sensitivity analysis
   plot_df <- output %>%
     dplyr::filter(!is.na(bcr)) %>%
     dplyr::filter(total_floors == n_floors) %>%
