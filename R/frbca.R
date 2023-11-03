@@ -38,6 +38,7 @@
 ## does all the computations for each model, and then assembles back together
 
 
+#' @export
 preprocess_model <- function(eal, cost, p) {
     ## Purpose:
     ## join eal and cost tables
@@ -58,6 +59,7 @@ preprocess_model <- function(eal, cost, p) {
 }
 
 
+#' @export
 preprocess_cost <- function(model) {
     ## Purpose:
     ## ignore rows without nonstructural costs
@@ -66,25 +68,25 @@ preprocess_cost <- function(model) {
 
 
 ## PV(total cost) = structural cost + PV(nonstructural cost)
+###
+## Purpose:
+## Calculate present value s, ns, and total costs
+###
+#' Present Value Cost
+#'
+#' @description
+#' Compute the present value (PV) structural, nonstructural, and total construction cost
+#'
+#' @importFrom dplyr mutate
+#'
+#'
+#' @param model A model
+#' @param params A list of parameters
+#'
+#' @return Updated model table including PV(Cost)
+#' @export
+#'
 pv_cost <- function(model, params) {
-  ###
-  ## Purpose:
-  ## Calculate present value s, ns, and total costs
-  ###
-  #' Present Value Cost
-  #'
-  #' @description
-  #' Compute the present value (PV) structural, nonstructural, and total construction cost
-  #'
-  #' @importFrom dplyr mutate
-  #'
-  #'
-  #' @param model A model
-  #' @param params A list of parameters
-  #'
-  #' @return Updated model table including PV(Cost)
-  #' @export
-  #'
     p = params$parameters$base
     return(
         model %>%
@@ -102,6 +104,7 @@ pv_cost <- function(model, params) {
 ## pv_cost = pv_s + pv_ns + (pv_ns / (1+delta))
 ## pv_s = structural cost
 ## pv_ns = nonstructural cost * (1-delta)^(2018-2011)
+#' @export
 pv_dcost <- function(model, params) {
     ## Purpose:
     ## Calculate present value cost deltas, relative to status quo
@@ -117,6 +120,7 @@ pv_dcost <- function(model, params) {
 }
 
 
+#' @export
 ## loss formulas:
 ## total_area = (floor area) * number of stories
 ## displacement = displace_per_area * tenant_per_area * reocc_days * total_area
@@ -136,6 +140,7 @@ pv_loss <- function(model, p) {
         )
 }
 
+#' @export
 ## pv benefits formula:
 ## (avoided losses) * ( (1 - (1+delta)^(-T)) / delta)
 Pv_benefit <- function(model, params, label='base') {
@@ -161,6 +166,7 @@ Pv_benefit <- function(model, params, label='base') {
 }
 
 
+#' @export
 bcr <- function(model, params, label='base') {
     ## Purpose:
     ## Compute BCR and NPV
@@ -177,6 +183,7 @@ bcr <- function(model, params, label='base') {
 }
 
 
+#' @export
 set_params <- function(params, param, bound='low') {
     ## Purpose:
     ## Reset baseline parameter to one of {low, high}
@@ -186,6 +193,7 @@ set_params <- function(params, param, bound='low') {
 }
 
 
+#' @export
 sensitivity <- function(model, params) {
     ## Purpose:
     ## Compute BCR and NPV, using low/high values of parameters
@@ -207,6 +215,7 @@ sensitivity <- function(model, params) {
 }
 
 
+#' @export
 bca <- function(model, params) {
     ## Purpose:
     ## Wrapper that computes (1) baseline BCA and (2) sensitivity analysis
