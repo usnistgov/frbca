@@ -136,7 +136,8 @@ pv_loss <- function(model, p) {
                    displacement=p$displacement*p$tenant*re_occupancy_time*total_area,
                    business_income=(1 - p$recapture)*p$bi*functional_recovery_time*total_area,
                    rental_income=p$ri*functional_recovery_time*total_area
-                   )
+               ) %>%
+        dplyr::mutate(sc=(p$sc * business_income))
         )
 }
 
@@ -147,7 +148,7 @@ pv_benefit <- function(model, params, label='base') {
     ## Purpose:
     ## Calculate present value avoided losses, relative to status quo
     join_cols = c('model', 'intervention')
-    loss_cols = c('repair_cost', 'displacement', 'business_income', 'rental_income')
+    loss_cols = c('repair_cost', 'displacement', 'business_income', 'rental_income', 'sc')
     p = params$parameters$base
     m = model %>%
         ## NB: assumes total_area column has been created
