@@ -143,7 +143,7 @@ pv_loss <- function(model, p) {
 #' @export
 ## pv benefits formula:
 ## (avoided losses) * ( (1 - (1+delta)^(-T)) / delta)
-Pv_benefit <- function(model, params, label='base') {
+pv_benefit <- function(model, params, label='base') {
     ## Purpose:
     ## Calculate present value avoided losses, relative to status quo
     join_cols = c('model', 'intervention')
