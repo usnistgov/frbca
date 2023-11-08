@@ -42,18 +42,17 @@
 preprocess_model <- function(eal, cost, p) {
     ## Purpose:
     ## join eal and cost tables
-    ## compute height (floors) and total area
+    ## compute total floor area (floor area * num_stories)
     ## separate models by height
-    ## 
+    ##
     models <- list()
     dat <- eal %>%
-        dplyr::left_join(cost, by=c('model', 'intervention')) %>%
-        dplyr::mutate(total_floors=as.numeric(gsub('(.*-)(\\d{1,2})$', '\\2', model))) %>%
-        dplyr::mutate(total_area=p$floor_area*total_floors)
-    floors <- dat %>% dplyr::distinct(total_floors) %>% pull()
-    for (i in 1:length(floors)) {
+        dplyr::left_join(cost, by=c('model', 'intervention', 'num_stories')) %>%
+        dplyr::mutate(total_area=p$floor_area*num_stories)
+    stories <- dat %>% dplyr::distinct(num_stories) %>% pull()
+    for (i in 1:length(stories)) {
         models[[i]] <- dat %>%
-            dplyr::filter(total_floors == floors[i])
+            dplyr::filter(num_stories == stories[i])
     }
     return(models)
 }
@@ -284,7 +283,7 @@ frbca <- function(eal, cost, params) {
 plot_frbca <- function(output, n_floors=4, system='RCMF') {
   plot_df <- output %>%
     dplyr::filter(!is.na(bcr)) %>%
-    dplyr::filter(total_floors == n_floors) %>%
+    dplyr::filter(num_stories == n_floors) %>%
     dplyr::select(model, bcr, label, parameter)
   base <- plot_df %>%
     dplyr::filter(label == 'base') %>%
