@@ -35,43 +35,43 @@ form:
 
 Each row is an archetype model. Expected (minimum) columns:
 
-| variable                 | type  | description                        |
-|--------------------------|-------|------------------------------------|
-| model                    | <chr> | unique model name or id            |
-| intervention             | {0,1} | baseline design = 0; otherwise = 1 |
-| num_stories              | <dbl> | number of stories                  |
-| loss_ratio               | <dbl> | loss ratio                         |
-| repair_costs             | <dbl> | repair costs, in dollars           |
-| re_occupancy_time        | <dbl> | re-occupancy time, in days         |
-| functional_recovery_time | <dbl> | functional recovery time, in days  |
+    | variable                 | type  | description                        |
+    |--------------------------|-------|------------------------------------|
+    | model                    | <chr> | unique model name or id            |
+    | intervention             | {0,1} | baseline design = 0; otherwise = 1 |
+    | num_stories              | <dbl> | number of stories                  |
+    | loss_ratio               | <dbl> | loss ratio                         |
+    | repair_costs             | <dbl> | repair costs, in dollars           |
+    | re_occupancy_time        | <dbl> | re-occupancy time, in days         |
+    | functional_recovery_time | <dbl> | functional recovery time, in days  |
 
-### Construction costs, for each archetype
+### Construction costs
 
 Each row is an archetype model. Expected (minimum) columns:
 
-| variable     | type  | description                                  |
-|--------------|-------|----------------------------------------------|
-| model        | <chr> | unique model name or id                      |
-| intervention | {0,1} | baseline design = 0; otherwise = 1           |
-| num_stories  | <dbl> | number of stories                            |
-| c_s          | <dbl> | structural construction costs, in dollars    |
-| c_ns         | <dbl> | nonstructural construction costs, in dollars |
+    | variable     | type  | description                                  |
+    |--------------|-------|----------------------------------------------|
+    | model        | <chr> | unique model name or id                      |
+    | intervention | {0,1} | baseline design = 0; otherwise = 1           |
+    | num_stories  | <dbl> | number of stories                            |
+    | c_s          | <dbl> | structural construction costs, in dollars    |
+    | c_ns         | <dbl> | nonstructural construction costs, in dollars |
 
 In addition, several parameters are required in list form. The following
 are the base parameters required under sub-list
 `input_param$parameters$base`:
 
-| parameter    | type    | description                                        |
-|--------------|---------|----------------------------------------------------|
-| floor_area   | <dbl>   | total square footage per story                     |
-| delta        | <delta> | discount rate                                      |
-| T            | <dbl>   | planning horizon, in years                         |
-| bi           | <dbl>   | business income                                    |
-| ri           | <dbl>   | rental income                                      |
-| displacement | <dbl>   | occupant-incurred costs of displacement            |
-| tenant       | <dbl>   | number of tenants per square foot                  |
-| recapture    | <dbl>   | recapture rate for rental income                   |
-| sc           | <sc>    | supply-chain multiplier for business income losses |
+    | parameter    | type    | description                                        |
+    |--------------|---------|----------------------------------------------------|
+    | floor_area   | <dbl>   | total square footage per story                     |
+    | delta        | <delta> | discount rate                                      |
+    | T            | <dbl>   | planning horizon, in years                         |
+    | bi           | <dbl>   | business income                                    |
+    | ri           | <dbl>   | rental income                                      |
+    | displacement | <dbl>   | occupant-incurred costs of displacement            |
+    | tenant       | <dbl>   | number of tenants per square foot                  |
+    | recapture    | <dbl>   | recapture rate for rental income                   |
+    | sc           | <sc>    | supply-chain multiplier for business income losses |
 
 In addition, parameter values for sensitivity analysis should be
 provided under the sub-list `input_param$parameters$sensitivity`. For
