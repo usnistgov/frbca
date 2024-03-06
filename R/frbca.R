@@ -93,7 +93,7 @@ pv_cost <- function(model, params) {
         ## preprocess_cost() %>%
         dplyr::mutate(
                    pv_s=c_s,
-                   pv_ns=c_ns(1 + 1/(1-p$delta)^(p$T/2))) %>%
+                   pv_ns=c_ns*(1 + 1/(1-p$delta)^(p$T/2))) %>%
          dplyr::mutate(pv_total=pv_s+pv_ns)
     )
 }
