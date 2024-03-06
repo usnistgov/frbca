@@ -46,12 +46,12 @@ preprocess_model <- function(eal, cost, p) {
     ## separate models by height
     ##
     models <- list()
-    dat <- eal %>%
-        dplyr::left_join(cost, by=c('model', 'intervention', 'num_stories')) %>%
+    dat <- eal |>
+        dplyr::left_join(cost, by=c('model', 'intervention', 'num_stories')) |>
         dplyr::mutate(total_area=p$floor_area*num_stories)
-    stories <- dat %>% dplyr::distinct(num_stories) %>% pull()
+    stories <- dat |> dplyr::distinct(num_stories) |> pull()
     for (i in 1:length(stories)) {
-        models[[i]] <- dat %>%
+        models[[i]] <- dat |>
             dplyr::filter(num_stories == stories[i])
     }
     return(models)
@@ -62,7 +62,7 @@ preprocess_model <- function(eal, cost, p) {
 preprocess_cost <- function(model) {
     ## Purpose:
     ## ignore rows without nonstructural costs
-    return(model %>% dplyr::filter(!is.na(c_ns)))
+    return(model |> dplyr::filter(!is.na(c_ns)))
 }
 
 
@@ -88,12 +88,12 @@ preprocess_cost <- function(model) {
 pv_cost <- function(model, params) {
     p = params$parameters$base
     return(
-        model %>%
+        model |>
         ## filter out missing NS cost
-        ## preprocess_cost() %>%
+        ## preprocess_cost() |>
         dplyr::mutate(
                    pv_s=c_s,
-                   pv_ns=c_ns*(1 + 1/(1-p$delta)^(p$T/2))) %>%
+                   pv_ns=c_ns*(1 + 1/(1-p$delta)^(p$T/2))) |>
          dplyr::mutate(pv_total=pv_s+pv_ns)
     )
 }
@@ -109,8 +109,8 @@ pv_dcost <- function(model, params) {
     ## Calculate present value cost deltas, relative to status quo
     ## NB: assumes cost table filtered to only include rows with ns cost
     return(
-        model %>%
-        pv_cost(params) %>%
+        model |>
+        pv_cost(params) |>
         dplyr::mutate(
                    cost_diff=pv_total - pv_total[intervention == 0],
                    cost_delta=(pv_total/pv_total[intervention == 0]) - 1
@@ -129,13 +129,13 @@ pv_loss <- function(model, p) {
     ## Purpose:
     ## Calculate losses for each model
     return(
-        model %>%
+        model |>
         ## NB: assumes total_area column has been created
         dplyr::mutate(
                    displacement=p$displacement*p$tenant*re_occupancy_time*total_area,
                    business_income=(1 - p$recapture)*p$bi*functional_recovery_time*total_area,
                    rental_income=p$ri*functional_recovery_time*total_area
-               ) %>%
+               ) |>
         dplyr::mutate(sc=(p$sc * business_income))
         )
 }
@@ -172,20 +172,20 @@ pv_benefit <- function(model, params, label='base') {
     join_cols = c('model', 'intervention')
     loss_cols = c('repair_cost', 'displacement', 'business_income', 'rental_income', 'sc')
     p = params$parameters$base
-    m = model %>%
+    m = model |>
         ## NB: assumes total_area column has been created
-        pv_loss(p) %>%
-        dplyr::select(all_of(c(join_cols, loss_cols))) %>%
-        dplyr::rowwise() %>%
-        dplyr::mutate(loss_total=sum(across(all_of(loss_cols)))) %>%
-        dplyr::ungroup() %>%
-        dplyr::mutate(delta_loss=loss_total[intervention == 0] - loss_total) %>%
-        dplyr::rowwise() %>%
-        dplyr::mutate(benefit=f_npv(t=seq(from=0, to=p$T), cf=rep(delta_loss, length=p$T+1), i=p$delta)) %>%
+        pv_loss(p) |>
+        dplyr::select(all_of(c(join_cols, loss_cols))) |>
+        dplyr::rowwise() |>
+        dplyr::mutate(loss_total=sum(across(all_of(loss_cols)))) |>
+        dplyr::ungroup() |>
+        dplyr::mutate(delta_loss=loss_total[intervention == 0] - loss_total) |>
+        dplyr::rowwise() |>
+        dplyr::mutate(benefit=f_npv(t=seq(from=0, to=p$T), cf=rep(delta_loss, length=p$T+1), i=p$delta)) |>
         dplyr::ungroup()
     return(
-        model %>%
-        dplyr::select(!repair_cost) %>%
+        model |>
+        dplyr::select(!repair_cost) |>
         dplyr::left_join(m, by=join_cols)
     )
 }
@@ -200,14 +200,14 @@ bcr <- function(model, params, label='base') {
     p = params$parameters$base
     model <- pv_benefit(model, params)
     model <- pv_dcost(model, params)
-    return(model %>%
-           dplyr::rowwise() %>%
+    return(model |>
+           dplyr::rowwise() |>
            dplyr::mutate(
                       bcr=benefit/cost_diff,
                       npv=benefit-cost_diff,
                       irr=f_irr(t=seq(from=0, to=p$T), cf=c(delta_loss-cost_diff, rep(delta_loss, length=p$T))),
-                    label=label) %>%
-           dplyr::mutate(aroi=(npv/cost_diff)/p$T) %>%
+                    label=label) |>
+           dplyr::mutate(aroi=(npv/cost_diff)/p$T) |>
            dplyr::ungroup()
            )
 }
@@ -237,7 +237,7 @@ sensitivity <- function(model, params) {
         ## iterate over parameters
         for (n in names(s)) {
             p <- set_params(params, n, bound=hi_low)
-            m[[paste(n, hi_low, sep='-')]] <- bcr(model, p, label=hi_low) %>%
+            m[[paste(n, hi_low, sep='-')]] <- bcr(model, p, label=hi_low) |>
                 dplyr::mutate(parameter=n)
         }
     }
@@ -311,22 +311,22 @@ frbca <- function(eal, cost, params) {
 #' @export
 #'
 plot_frbca <- function(output, n_floors=4, system='RCMF') {
-  plot_df <- output %>%
-    dplyr::filter(!is.na(bcr)) %>%
-    dplyr::filter(num_stories == n_floors) %>%
+  plot_df <- output |>
+    dplyr::filter(!is.na(bcr)) |>
+    dplyr::filter(num_stories == n_floors) |>
     dplyr::select(model, bcr, label, parameter)
-  base <- plot_df %>%
-    dplyr::filter(label == 'base') %>%
+  base <- plot_df |>
+    dplyr::filter(label == 'base') |>
     dplyr::select(!c(label, parameter))
-  sen <- plot_df %>%
-    dplyr::filter(label != 'base') %>%
-    tidyr::pivot_wider(names_from=label, values_from=bcr) %>%
-    dplyr::left_join(base, by='model') %>%
+  sen <- plot_df |>
+    dplyr::filter(label != 'base') |>
+    tidyr::pivot_wider(names_from=label, values_from=bcr) |>
+    dplyr::left_join(base, by='model') |>
     dplyr::rename(bcr_low=low, bcr_high=high)
   ## generate plot
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_frbca(output, n_floors) %>%
+  plot.sen <- postprocess_frbca(output, n_floors) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
