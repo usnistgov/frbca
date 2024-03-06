@@ -289,6 +289,25 @@ frbca <- function(eal, cost, params) {
     return(models)
 }
 
+#' @export
+#'
+postprocess_sen <- function(output, n_floors=4) {
+  ## function to postprocess output for plotting sensitivity
+  plot_df <- output %>%
+    dplyr::filter(!is.na(bcr)) %>%
+    dplyr::filter(total_floors == n_floors) %>%
+    dplyr::select(model, bcr, label, parameter)
+  base <- plot_df %>%
+    dplyr::filter(label == 'base') %>%
+    dplyr::select(!c(label, parameter))
+  sen <- plot_df %>%
+    dplyr::filter(label != 'base') %>%
+    tidyr::pivot_wider(names_from=label, values_from=bcr) %>%
+    dplyr::left_join(base, by='model') %>%
+    dplyr::rename(bcr_low=low, bcr_high=high)
+  return(sen)
+}
+
 ###
 ## Purpose:
 ## Post-process data and generate plot for sensitivity analysis
@@ -311,18 +330,6 @@ frbca <- function(eal, cost, params) {
 #' @export
 #'
 plot_frbca <- function(output, n_floors=4, system='RCMF') {
-  plot_df <- output |>
-    dplyr::filter(!is.na(bcr)) |>
-    dplyr::filter(num_stories == n_floors) |>
-    dplyr::select(model, bcr, label, parameter)
-  base <- plot_df |>
-    dplyr::filter(label == 'base') |>
-    dplyr::select(!c(label, parameter))
-  sen <- plot_df |>
-    dplyr::filter(label != 'base') |>
-    tidyr::pivot_wider(names_from=label, values_from=bcr) |>
-    dplyr::left_join(base, by='model') |>
-    dplyr::rename(bcr_low=low, bcr_high=high)
   ## generate plot
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
