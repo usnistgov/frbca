@@ -3,6 +3,8 @@
 export("%>%")
 export(bca)
 export(bcr)
+export(f_irr)
+export(f_npv)
 export(frbca)
 export(plot_frbca)
 export(preprocess_cost)

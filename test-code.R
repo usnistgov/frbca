@@ -48,9 +48,16 @@ preprocess_model <- function(eal, cost, p) {
     models <- list()
     dat <- eal %>%
         dplyr::left_join(cost, by=c('model', 'intervention', 'num_stories')) %>%
+<<<<<<< HEAD
         dplyr::mutate(total_area=p$floor_area*num_stories)
     stories <- dat %>% dplyr::distinct(num_stories) %>% pull()
     for (i in 1:length(stories)) {
+=======
+        dplyr::mutate(total_floors=as.numeric(gsub('(.*-)(\\d{1,2})$', '\\2', model))) %>%
+        dplyr::mutate(total_area=p$floor_area*total_floors)
+    floors <- dat %>% dplyr::distinct(total_floors) %>% pull()
+    for (i in 1:length(floors)) {
+>>>>>>> 754230e (Add IRR and AROI, including helper functions for NPV used to calculate PV(benefit), NPV, and IRR #11)
         models[[i]] <- dat %>%
             dplyr::filter(num_stories == stories[i])
     }
