@@ -293,17 +293,17 @@ frbca <- function(eal, cost, params) {
 #'
 postprocess_sen <- function(output, n_floors=4) {
   ## function to postprocess output for plotting sensitivity
-  plot_df <- output %>%
-    dplyr::filter(!is.na(bcr)) %>%
-    dplyr::filter(total_floors == n_floors) %>%
+  plot_df <- output |>
+    dplyr::filter(!is.na(bcr)) |>
+    dplyr::filter(total_floors == n_floors) |>
     dplyr::select(model, bcr, label, parameter)
-  base <- plot_df %>%
-    dplyr::filter(label == 'base') %>%
+  base <- plot_df |>
+    dplyr::filter(label == 'base') |>
     dplyr::select(!c(label, parameter))
-  sen <- plot_df %>%
-    dplyr::filter(label != 'base') %>%
-    tidyr::pivot_wider(names_from=label, values_from=bcr) %>%
-    dplyr::left_join(base, by='model') %>%
+  sen <- plot_df |>
+    dplyr::filter(label != 'base') |>
+    tidyr::pivot_wider(names_from=label, values_from=bcr) |>
+    dplyr::left_join(base, by='model') |>
     dplyr::rename(bcr_low=low, bcr_high=high)
   return(sen)
 }
