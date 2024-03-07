@@ -295,7 +295,7 @@ postprocess_bcr <- function(output, n_floors=4) {
   ## function to postprocess output for plotting sensitivity
   plot_df <- output |>
     dplyr::filter(!is.na(bcr)) |>
-    dplyr::filter(total_floors == n_floors) |>
+    dplyr::filter(num_stories == n_floors) |>
     dplyr::select(model, bcr, label, parameter)
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
