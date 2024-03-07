@@ -351,3 +351,22 @@ plot_bcr <- function(output, n_floors=4, system='RCMF') {
       y='Benefit-cost ratio')
 return(plot.sen)
 }
+
+#' @export
+plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
+  ## PLACEHOLDER FOR PLOTTING EALs
+  plot.eal <- output |>
+    dplyr::filter(model %in% paste(model_list, num_stories, sep='-')) |>
+    dplyr::select(model, label, repair_cost, displacement, business_income, rental_income, sc) |>
+    dplyr::filter(label == 'base') |>
+    tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
+    dplyr::mutate(loss_category=forcats::fct_rev(loss_category)) |>
+    ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
+    geom_col(position='dodge', width=0.5) +
+    ggplot2::theme_light() +
+    ggplot2::theme(legend.position='bottom') +
+    ## TODO: Add text labels for dollar amounts
+    coord_flip() +
+    ggthemes::scale_fill_colorblind()
+  return(plot.eal)
+}
