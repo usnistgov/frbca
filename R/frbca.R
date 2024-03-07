@@ -291,7 +291,7 @@ frbca <- function(eal, cost, params) {
 
 #' @export
 #'
-postprocess_sen <- function(output, n_floors=4) {
+postprocess_bcr <- function(output, n_floors=4) {
   ## function to postprocess output for plotting sensitivity
   plot_df <- output |>
     dplyr::filter(!is.na(bcr)) |>
@@ -329,11 +329,11 @@ postprocess_sen <- function(output, n_floors=4) {
 #' @return Updated model table including PV(Cost)
 #' @export
 #'
-plot_frbca <- function(output, n_floors=4, system='RCMF') {
+plot_bcr <- function(output, n_floors=4, system='RCMF') {
   ## generate plot
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_frbca(output, n_floors) |>
+  plot.sen <- postprocess_bcr(output, n_floors) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
