@@ -427,7 +427,6 @@ postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
 #' @export
 plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
   ## PLACEHOLDER FOR PLOTTING EALs
-  ## TODO: decouple df creating for generating tables
   plot.eal <- postprocess_eal(ouput, n_floors, model_list) |>
     ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
     geom_col(position='dodge', width=0.5) +
