@@ -118,6 +118,38 @@ pv_dcost <- function(model, params) {
     )
 }
 
+#' @export
+#'
+compute_loss <- function(loss_name, p, occ_t, fr_t) {
+  ## function to compute loss based on loss_name and parameter values
+  ## NOTE: For now, to allow including new loss categories, just have to add computation to this function!
+  loss = p[['loss']][[loss_name]]
+  ## loss_val = loss[['value']] * (loss[['time']]*occ_t + (1-loss[['time']])*fr_t)
+  if (loss_name == 'loss_displacement') {
+    ## loss_val = loss_val * p[['tenant']]
+    loss_val = loss * p[['tenant']] * occ_t
+  } else if (loss_name == 'loss_business_income') {
+    ## loss_val = loss_val * (1-p[['recapture']])
+    loss_val = loss * (1-p[['recapture']]) * fr_t
+  } else if (loss_name == 'loss_rental_income') {
+    loss_val = loss * fr_t
+  } else {
+    loss_val = NA
+  }
+  return(loss_val)
+}
+
+#' @export
+#'
+compute_supply_chain_loss <- function(p, business_income) {
+  ## NOTE: if supply chain losses need to be reformulated, just have to redefine this function!
+  if (!is.na(p[['loss']][['loss_supply_chain']])) {
+    loss_val = p[['loss']][['loss_supply_chain']] * business_income
+  } else {
+    loss_val = NA
+  }
+  return(loss_val)
+}
 
 #' @export
 ## loss formulas:
@@ -128,15 +160,17 @@ pv_dcost <- function(model, params) {
 pv_loss <- function(model, p) {
     ## Purpose:
     ## Calculate losses for each model
+    ## NB: assumes total_area column has been created
+    loss_names = names(p$loss)
+  for (loss_name in loss_names[!grepl('supply_chain', loss_names)]) {
+    model = model |>
+      dplyr::rowwise() |>
+      dplyr::mutate(UQ(loss_name):=compute_loss(loss_name, p, re_occupancy_time, functional_recovery_time)*total_area) |>
+      dplyr::ungroup()
+  }
     return(
         model |>
-        ## NB: assumes total_area column has been created
-        dplyr::mutate(
-                   displacement=p$displacement*p$tenant*re_occupancy_time*total_area,
-                   business_income=(1 - p$recapture)*p$bi*functional_recovery_time*total_area,
-                   rental_income=p$ri*functional_recovery_time*total_area
-               ) |>
-        dplyr::mutate(sc=(p$sc * business_income))
+        dplyr::mutate(loss_supply_chain=compute_supply_chain_loss(p, loss_business_income))
         )
 }
 
@@ -170,8 +204,9 @@ pv_benefit <- function(model, params, label='base') {
     ## Purpose:
     ## Calculate present value avoided losses, relative to status quo
     join_cols = c('model', 'intervention')
-    loss_cols = c('repair_cost', 'displacement', 'business_income', 'rental_income', 'sc')
+    ## loss_cols = c('repair_cost', 'displacement', 'business_income', 'rental_income', 'sc')
     p = params$parameters$base
+    loss_cols = c('repair_cost', names(p$loss))
     m = model |>
         ## NB: assumes total_area column has been created
         pv_loss(p) |>
@@ -218,7 +253,14 @@ set_params <- function(params, param, bound='low') {
     ## Purpose:
     ## Reset baseline parameter to one of {low, high}
     p <- params
+  if (param == 'loss') {
+    loss_names = names(p[['parameters']][['sensitivity']][['loss']])
+    for (loss_name in loss_names) {
+      p[['parameters']][['base']][['loss']][[loss_name]] <- p[['parameters']][['sensitivity']][['loss']][[loss_name]][[bound]]
+    }
+  } else {
     p[['parameters']][['base']][[param]] <- p[['parameters']][['sensitivity']][[param]][[bound]]
+  }
     return(p)
 }
 
@@ -236,9 +278,18 @@ sensitivity <- function(model, params) {
     for (hi_low in c('low', 'high')) {
         ## iterate over parameters
         for (n in names(s)) {
+          if (n == 'loss') {
+            ss <- s[['loss']]
+            for (nn in names(ss)) {
+              p <- set_params(params, nn, bound=hi_low)
+              m[[paste(nn, hi_low, sep='-')]] <- bcr(model, p, label=hi_low) |>
+                dplyr::mutate(parameter=nn)
+            }
+          } else {
             p <- set_params(params, n, bound=hi_low)
             m[[paste(n, hi_low, sep='-')]] <- bcr(model, p, label=hi_low) |>
-                dplyr::mutate(parameter=n)
+              dplyr::mutate(parameter=n)
+          }
         }
     }
     return(dplyr::bind_rows(m))
@@ -279,17 +330,20 @@ bca <- function(model, params) {
 #' @export
 #'
 frbca <- function(eal, cost, params) {
-    models <- preprocess_model(eal, cost, params[['parameters']][['base']])
-    for (i in 1:length(models)) {
-        models[[i]] <- bca(models[[i]], params)
-    }
-    ## TODO: filter out NaN as base case?
-    ## TODO: filter out NA for missing cost?
-    models <- dplyr::bind_rows(models)
-    return(models)
+  models <- preprocess_model(eal, cost, params[['parameters']][['base']])
+  for (i in 1:length(models)) {
+    models[[i]] <- bca(models[[i]], params)
+  }
+  ## TODO: filter out NaN as base case?
+  ## TODO: filter out NA for missing cost?
+  models <- dplyr::bind_rows(models)
+  return(models)
 }
 
 #' @export
+#'
+#' @importFrom forcats fct_rev
+#' @importFrom tidyr pivot_wider
 #'
 postprocess_bcr <- function(output, n_floors=4) {
   ## function to postprocess output for plotting sensitivity
@@ -304,8 +358,9 @@ postprocess_bcr <- function(output, n_floors=4) {
     dplyr::filter(label != 'base') |>
     tidyr::pivot_wider(names_from=label, values_from=bcr) |>
     dplyr::left_join(base, by='model') |>
-    dplyr::rename(bcr_low=low, bcr_high=high)
-  return(sen)
+    dplyr::rename(bcr_low=low, bcr_high=high) |>
+    dplyr::mutate(parameter=forcats::fct_rev(parameter))
+    return(sen)
 }
 
 ###
@@ -353,14 +408,27 @@ return(plot.sen)
 }
 
 #' @export
-plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
-  ## PLACEHOLDER FOR PLOTTING EALs
-  plot.eal <- output |>
+#'
+#' @importFrom forcats fct_rev
+#' @importFrom tidyr pivot_wider
+#'
+postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
+  return(
+    output |>
     dplyr::filter(model %in% paste(model_list, num_stories, sep='-')) |>
-    dplyr::select(model, label, repair_cost, displacement, business_income, rental_income, sc) |>
+    dplyr::select(model, label, starts_with('loss'), !ends_with('ratio')) |>
+    dplyr::select(!loss_ratio) |>
     dplyr::filter(label == 'base') |>
     tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
-    dplyr::mutate(loss_category=forcats::fct_rev(loss_category)) |>
+    dplyr::mutate(loss_category=forcats::fct_rev(loss_category))
+  )
+}
+
+#' @export
+plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
+  ## PLACEHOLDER FOR PLOTTING EALs
+  ## TODO: decouple df creating for generating tables
+  plot.eal <- postprocess_eal(ouput, n_floors, model_list) |>
     ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
     geom_col(position='dodge', width=0.5) +
     ggplot2::theme_light() +
