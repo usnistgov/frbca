@@ -345,11 +345,10 @@ frbca <- function(eal, cost, params) {
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_bcr <- function(output, n_floors=4) {
+postprocess_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15')) {
   ## function to postprocess output for plotting sensitivity
   plot_df <- output |>
-    dplyr::filter(!is.na(bcr)) |>
-    dplyr::filter(num_stories == n_floors) |>
+    dplyr::filter(model %in% paste(model_list, n_floors, sep='-')) |>
     dplyr::select(model, bcr, label, parameter)
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
@@ -427,7 +426,7 @@ postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
 #' @export
 plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
   ## PLACEHOLDER FOR PLOTTING EALs
-  plot.eal <- postprocess_eal(ouput, n_floors, model_list) |>
+  plot.eal <- postprocess_eal(output, n_floors, model_list) |>
     ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
     geom_col(position='dodge', width=0.5) +
     ggplot2::theme_light() +
