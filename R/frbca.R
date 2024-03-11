@@ -383,11 +383,11 @@ postprocess_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15')) {
 #' @return Updated model table including PV(Cost)
 #' @export
 #'
-plot_bcr <- function(output, n_floors=4, system='RCMF') {
+plot_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15'), system='RCMF') {
   ## generate plot
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_bcr(output, n_floors) |>
+  plot.sen <- postprocess_bcr(output, n_floors, model_list) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
@@ -431,7 +431,9 @@ plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
     geom_col(position='dodge', width=0.5) +
     ggplot2::theme_light() +
     ggplot2::theme(legend.position='bottom') +
+    ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
     ## TODO: Add text labels for dollar amounts
+    ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
     coord_flip() +
     ggthemes::scale_fill_colorblind()
   return(plot.eal)
