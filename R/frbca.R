@@ -253,11 +253,11 @@ set_params <- function(params, param, bound='low') {
     ## Purpose:
     ## Reset baseline parameter to one of {low, high}
     p <- params
-  if (param == 'loss') {
-    loss_names = names(p[['parameters']][['sensitivity']][['loss']])
-    for (loss_name in loss_names) {
-      p[['parameters']][['base']][['loss']][[loss_name]] <- p[['parameters']][['sensitivity']][['loss']][[loss_name]][[bound]]
-    }
+    if (grepl('^loss', param)) {
+    ## loss_names = names(p[['parameters']][['sensitivity']][['loss']])
+    ## for (loss_name in loss_names) {
+      p[['parameters']][['base']][['loss']][[param]] <- p[['parameters']][['sensitivity']][['loss']][[param]][[bound]]
+    ## }
   } else {
     p[['parameters']][['base']][[param]] <- p[['parameters']][['sensitivity']][[param]][[bound]]
   }
