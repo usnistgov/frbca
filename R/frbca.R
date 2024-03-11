@@ -425,6 +425,10 @@ postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
 }
 
 #' @export
+#'
+#' @importFrom scales label_dollar
+#' @importFrom ggthemes scale_fill_colorblind
+#'
 plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
   ## PLACEHOLDER FOR PLOTTING EALs
   plot.eal <- postprocess_eal(output, n_floors, model_list) |>
@@ -434,7 +438,7 @@ plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
     ggplot2::theme(legend.position='bottom') +
     ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
     ## TODO: Add geom_text labels for dollar amounts
-    coord_flip() +
+    ggplot2::coord_flip() +
     ggthemes::scale_fill_colorblind()
   return(plot.eal)
 }
