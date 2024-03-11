@@ -415,8 +415,8 @@ return(plot.sen)
 postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
   return(
     output |>
-    dplyr::filter(model %in% paste(model_list, num_stories, sep='-')) |>
-    dplyr::select(model, label, starts_with('loss'), !ends_with('ratio')) |>
+    dplyr::filter(model %in% paste(model_list, n_floors, sep='-')) |>
+    dplyr::select(model, label, starts_with('loss')) |>
     dplyr::select(!loss_ratio) |>
     dplyr::filter(label == 'base') |>
     tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
