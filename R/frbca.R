@@ -415,8 +415,9 @@ postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
   return(
     output |>
     dplyr::filter(model %in% paste(model_list, n_floors, sep='-')) |>
-    dplyr::select(model, label, starts_with('loss')) |>
+    dplyr::select(model, label, repair_cost, starts_with('loss')) |>
     dplyr::select(!loss_ratio) |>
+    dplyr::rename(loss_repair_cost=repair_cost) |>
     dplyr::filter(label == 'base') |>
     tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
     dplyr::mutate(loss_category=forcats::fct_rev(loss_category))
@@ -432,8 +433,7 @@ plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
     ggplot2::theme_light() +
     ggplot2::theme(legend.position='bottom') +
     ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
-    ## TODO: Add text labels for dollar amounts
-    ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
+    ## TODO: Add geom_text labels for dollar amounts
     coord_flip() +
     ggthemes::scale_fill_colorblind()
   return(plot.eal)
