@@ -45,14 +45,19 @@ preprocess_model <- function(eal, cost, p) {
     ## compute total floor area (floor area * num_stories)
     ## separate models by height
     ##
+    join_cols = c('system', 'model', 'num_stories', 'intervention', 'design_s', 'design_ns')
     models <- list()
     dat <- eal |>
-        dplyr::left_join(cost, by=c('model', 'intervention', 'num_stories')) |>
+        dplyr::left_join(cost, by=join_cols) |>
         dplyr::mutate(total_area=p$floor_area*num_stories)
-    stories <- dat |> dplyr::distinct(num_stories) |> pull()
-    for (i in 1:length(stories)) {
-        models[[i]] <- dat |>
-            dplyr::filter(num_stories == stories[i])
+    systems <- dat |> dplyr::distinct(system) |> pull()
+    for (j in 1:length(systems)) {
+      dat_j = dat |> dplyr::filter(system == systems[j])
+      stories <- dat_j |> dplyr::distinct(num_stories) |> pull()
+      for (i in 1:length(stories)) {
+        models[[systems[j]]][[paste(stories[i], "story", sep="-")]] <- dat_j |>
+          dplyr::filter(num_stories == stories[i])
+      }
     }
     return(models)
 }
@@ -114,7 +119,7 @@ pv_dcost <- function(model, params) {
         dplyr::mutate(
                    cost_diff=pv_total - pv_total[intervention == 0],
                    cost_delta=(pv_total/pv_total[intervention == 0]) - 1
-                      ) 
+                      )
     )
 }
 
@@ -203,7 +208,7 @@ f_irr <- function(t, cf) {
 pv_benefit <- function(model, params, label='base') {
     ## Purpose:
     ## Calculate present value avoided losses, relative to status quo
-    join_cols = c('model', 'intervention')
+    join_cols = c('system', 'model', 'num_stories', 'intervention', 'design_s', 'design_ns')
     ## loss_cols = c('repair_cost', 'displacement', 'business_income', 'rental_income', 'sc')
     p = params$parameters$base
     loss_cols = c('repair_cost', names(p$loss))
@@ -212,7 +217,7 @@ pv_benefit <- function(model, params, label='base') {
         pv_loss(p) |>
         dplyr::select(all_of(c(join_cols, loss_cols))) |>
         dplyr::rowwise() |>
-        dplyr::mutate(loss_total=sum(across(all_of(loss_cols)))) |>
+        dplyr::mutate(loss_total=sum(across(all_of(loss_cols)), na.rm=TRUE)) |>
         dplyr::ungroup() |>
         dplyr::mutate(delta_loss=loss_total[intervention == 0] - loss_total) |>
         dplyr::rowwise() |>
@@ -332,7 +337,9 @@ bca <- function(model, params) {
 frbca <- function(eal, cost, params) {
   models <- preprocess_model(eal, cost, params[['parameters']][['base']])
   for (i in 1:length(models)) {
-    models[[i]] <- bca(models[[i]], params)
+    for (j in 1:length(models[[i]])) {
+      models[[i]][[j]] <- bca(models[[i]][[j]], params)
+    }
   }
   ## TODO: filter out NaN as base case?
   ## TODO: filter out NA for missing cost?
