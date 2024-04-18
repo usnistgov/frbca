@@ -4,7 +4,7 @@
 \alias{plot_bcr}
 \title{Plot FR-BCA Outputs}
 \usage{
-plot_bcr(output, n_floors = 4, model_list = c("B15", "I15"), system = "RCMF")
+plot_bcr(output, n_floors = 4, model_list = "(IV|nsfr)")
 }
 \arguments{
 \item{output}{Output from \code{frbca()}}

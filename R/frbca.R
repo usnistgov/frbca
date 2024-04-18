@@ -148,7 +148,7 @@ compute_loss <- function(loss_name, p, occ_t, fr_t) {
 #'
 compute_supply_chain_loss <- function(p, business_income) {
   ## NOTE: if supply chain losses need to be reformulated, just have to redefine this function!
-  if (!is.na(p[['loss']][['loss_supply_chain']])) {
+  if (length(p[['loss']][['loss_supply_chain']]) > 0) {
     loss_val = p[['loss']][['loss_supply_chain']] * business_income
   } else {
     loss_val = NA
@@ -352,10 +352,10 @@ frbca <- function(eal, cost, params) {
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15')) {
+postprocess_bcr <- function(output, n_floors=4, model_list='(IV|nsfr)') {
   ## function to postprocess output for plotting sensitivity
   plot_df <- output |>
-    dplyr::filter(model %in% paste(model_list, n_floors, sep='-')) |>
+    dplyr::filter(grepl(model_list, model) & num_stories %in% n_floors) |>
     dplyr::select(model, bcr, label, parameter)
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
@@ -390,8 +390,9 @@ postprocess_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15')) {
 #' @return Updated model table including PV(Cost)
 #' @export
 #'
-plot_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15'), system='RCMF') {
+plot_bcr <- function(output, n_floors=4, model_list='(IV|nsfr)') {
   ## generate plot
+  system <- output |> dplyr::distinct(system) |> pull()
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
   plot.sen <- postprocess_bcr(output, n_floors, model_list) |>
@@ -418,10 +419,10 @@ return(plot.sen)
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
+postprocess_eal <- function(output, n_floors=4, model_list='(IV|nsfr)') {
   return(
     output |>
-    dplyr::filter(model %in% paste(model_list, n_floors, sep='-')) |>
+    dplyr::filter(grepl(model_list, model) & num_stories %in% n_floors) |>
     dplyr::select(model, label, repair_cost, starts_with('loss')) |>
     dplyr::select(!loss_ratio) |>
     dplyr::rename(loss_repair_cost=repair_cost) |>
@@ -436,7 +437,7 @@ postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
 #' @importFrom scales label_dollar
 #' @importFrom ggthemes scale_fill_colorblind
 #'
-plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
+plot_eal <- function(output, n_floors=4, model_list='(IV|nsfr)') {
   ## PLACEHOLDER FOR PLOTTING EALs
   plot.eal <- postprocess_eal(output, n_floors, model_list) |>
     ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
