@@ -133,7 +133,7 @@ compute_loss <- function(loss_name, p, occ_t, fr_t) {
   if (loss_name == 'loss_displacement') {
     ## loss_val = loss_val * p[['tenant']]
     loss_val = loss * p[['tenant']] * occ_t
-  } else if (loss_name == 'loss_business_income') {
+  } else if (grepl('(business_income|value_added)', loss_name)) {
     ## loss_val = loss_val * (1-p[['recapture']])
     loss_val = loss * (1-p[['recapture']]) * fr_t
   } else if (loss_name == 'loss_rental_income') {
