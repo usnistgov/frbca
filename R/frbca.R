@@ -132,12 +132,12 @@ compute_loss <- function(loss_name, p, occ_t, fr_t) {
   ## loss_val = loss[['value']] * (loss[['time']]*occ_t + (1-loss[['time']])*fr_t)
   if (loss_name == 'loss_displacement') {
     ## loss_val = loss_val * p[['tenant']]
-    loss_val = loss * p[['tenant']] * occ_t
+    loss_val = loss * p[['tenant']] * fr_t
   } else if (grepl('(business_income|value_added)', loss_name)) {
     ## loss_val = loss_val * (1-p[['recapture']])
     loss_val = loss * (1-p[['recapture']]) * fr_t
   } else if (loss_name == 'loss_rental_income') {
-    loss_val = loss * fr_t
+    loss_val = loss * occ_t
   } else {
     loss_val = NA
   }
@@ -428,7 +428,9 @@ postprocess_eal <- function(output, n_floors=4, model_list='(IV|nsfr)') {
     dplyr::rename(loss_repair_cost=repair_cost) |>
     dplyr::filter(label == 'base') |>
     tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
-    dplyr::mutate(loss_category=forcats::fct_rev(loss_category))
+    dplyr::mutate(loss_category=forcats::fct_relevel(
+                                           forcats::fct_rev(loss_category),
+                                           'loss_total', after=Inf))
   )
 }
 
