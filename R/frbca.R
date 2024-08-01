@@ -1,4 +1,4 @@
-## Code to conduct FR-BCA 
+## Code to conduct FR-BCA
 
 ## library(dplyr)
 ## library(magrittr)
@@ -45,14 +45,19 @@ preprocess_model <- function(eal, cost, p) {
     ## compute total floor area (floor area * num_stories)
     ## separate models by height
     ##
+    join_cols = c('system', 'model', 'num_stories', 'intervention', 'design_s', 'design_ns')
     models <- list()
     dat <- eal |>
-        dplyr::left_join(cost, by=c('model', 'intervention', 'num_stories')) |>
+        dplyr::left_join(cost, by=join_cols) |>
         dplyr::mutate(total_area=p$floor_area*num_stories)
-    stories <- dat |> dplyr::distinct(num_stories) |> pull()
-    for (i in 1:length(stories)) {
-        models[[i]] <- dat |>
-            dplyr::filter(num_stories == stories[i])
+    systems <- dat |> dplyr::distinct(system) |> pull()
+    for (j in 1:length(systems)) {
+      dat_j = dat |> dplyr::filter(system == systems[j])
+      stories <- dat_j |> dplyr::distinct(num_stories) |> pull()
+      for (i in 1:length(stories)) {
+        models[[systems[j]]][[paste(stories[i], "story", sep="-")]] <- dat_j |>
+          dplyr::filter(num_stories == stories[i])
+      }
     }
     return(models)
 }
@@ -92,9 +97,12 @@ pv_cost <- function(model, params) {
         ## filter out missing NS cost
         ## preprocess_cost() |>
         dplyr::mutate(
-                   pv_s=c_s,
-                   pv_ns=c_ns*(1 + 1/(1-p$delta)^(p$T/2))) |>
-         dplyr::mutate(pv_total=pv_s+pv_ns)
+                 pv_res = construction - c_ns,
+                 ## pv_s=c_s,
+                 pv_ns = c_ns
+                 ## pv_ns=c_ns*(1 + 1/(1+p$delta)^(p$T/2))
+               ) |>
+         dplyr::mutate(pv_total=pv_res+pv_ns)
     )
 }
 
@@ -114,7 +122,7 @@ pv_dcost <- function(model, params) {
         dplyr::mutate(
                    cost_diff=pv_total - pv_total[intervention == 0],
                    cost_delta=(pv_total/pv_total[intervention == 0]) - 1
-                      ) 
+                      )
     )
 }
 
@@ -127,12 +135,12 @@ compute_loss <- function(loss_name, p, occ_t, fr_t) {
   ## loss_val = loss[['value']] * (loss[['time']]*occ_t + (1-loss[['time']])*fr_t)
   if (loss_name == 'loss_displacement') {
     ## loss_val = loss_val * p[['tenant']]
-    loss_val = loss * p[['tenant']] * occ_t
-  } else if (loss_name == 'loss_business_income') {
+    loss_val = loss * p[['tenant']] * fr_t
+  } else if (grepl('(business_income|value_added)', loss_name)) {
     ## loss_val = loss_val * (1-p[['recapture']])
     loss_val = loss * (1-p[['recapture']]) * fr_t
   } else if (loss_name == 'loss_rental_income') {
-    loss_val = loss * fr_t
+    loss_val = loss * occ_t
   } else {
     loss_val = NA
   }
@@ -143,7 +151,7 @@ compute_loss <- function(loss_name, p, occ_t, fr_t) {
 #'
 compute_supply_chain_loss <- function(p, business_income) {
   ## NOTE: if supply chain losses need to be reformulated, just have to redefine this function!
-  if (!is.na(p[['loss']][['loss_supply_chain']])) {
+  if (length(p[['loss']][['loss_supply_chain']]) > 0) {
     loss_val = p[['loss']][['loss_supply_chain']] * business_income
   } else {
     loss_val = NA
@@ -174,6 +182,8 @@ pv_loss <- function(model, p) {
         )
 }
 
+#' @importFrom stats uniroot
+#'
 #' @export
 #'
 f_npv <- function(t, cf, i) {
@@ -203,7 +213,7 @@ f_irr <- function(t, cf) {
 pv_benefit <- function(model, params, label='base') {
     ## Purpose:
     ## Calculate present value avoided losses, relative to status quo
-    join_cols = c('model', 'intervention')
+    join_cols = c('system', 'model', 'num_stories', 'intervention', 'design_s', 'design_ns')
     ## loss_cols = c('repair_cost', 'displacement', 'business_income', 'rental_income', 'sc')
     p = params$parameters$base
     loss_cols = c('repair_cost', names(p$loss))
@@ -212,7 +222,7 @@ pv_benefit <- function(model, params, label='base') {
         pv_loss(p) |>
         dplyr::select(all_of(c(join_cols, loss_cols))) |>
         dplyr::rowwise() |>
-        dplyr::mutate(loss_total=sum(across(all_of(loss_cols)))) |>
+        dplyr::mutate(loss_total=sum(across(all_of(loss_cols)), na.rm=TRUE)) |>
         dplyr::ungroup() |>
         dplyr::mutate(delta_loss=loss_total[intervention == 0] - loss_total) |>
         dplyr::rowwise() |>
@@ -330,14 +340,20 @@ bca <- function(model, params) {
 #' @export
 #'
 frbca <- function(eal, cost, params) {
+  output = list()
   models <- preprocess_model(eal, cost, params[['parameters']][['base']])
-  for (i in 1:length(models)) {
-    models[[i]] <- bca(models[[i]], params)
+  systems <- names(models)
+  for (i in systems) {
+    o_i = models[[i]]
+    for (j in 1:length(models[[i]])) {
+      o_i[[j]] <- bca(models[[i]][[j]], params)
+    }
+    output[[i]] = dplyr::bind_rows(o_i)
   }
   ## TODO: filter out NaN as base case?
   ## TODO: filter out NA for missing cost?
-  models <- dplyr::bind_rows(models)
-  return(models)
+  ## output <- dplyr::bind_rows(output)
+  return(output)
 }
 
 #' @export
@@ -345,10 +361,13 @@ frbca <- function(eal, cost, params) {
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15')) {
+postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_base=FALSE) {
   ## function to postprocess output for plotting sensitivity
+  ## drop baseline-baseline, if it exists
+  model_list = model_list[!grepl('baseline-baseline', model_list)]
+  ## create data frame for table/plot
   plot_df <- output |>
-    dplyr::filter(model %in% paste(model_list, n_floors, sep='-')) |>
+    dplyr::filter(model %in% model_list) |>
     dplyr::select(model, bcr, label, parameter)
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
@@ -358,8 +377,14 @@ postprocess_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15')) {
     tidyr::pivot_wider(names_from=label, values_from=bcr) |>
     dplyr::left_join(base, by='model') |>
     dplyr::rename(bcr_low=low, bcr_high=high) |>
-    dplyr::mutate(parameter=forcats::fct_rev(parameter))
+    dplyr::mutate(
+             model=factor(model, levels=model_list),
+             parameter=forcats::fct_rev(parameter))
+  if (out_base) {
+    return(base)
+  } else {
     return(sen)
+  }
 }
 
 ###
@@ -383,11 +408,13 @@ postprocess_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15')) {
 #' @return Updated model table including PV(Cost)
 #' @export
 #'
-plot_bcr <- function(output, n_floors=4, model_list=c('B15', 'I15'), system='RCMF') {
+plot_bcr <- function(output, model_list) {
   ## generate plot
+  system <- output |> dplyr::distinct(system) |> pull()
+  n_floors <- output |> dplyr::distinct(num_stories) |> pull()
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_bcr(output, n_floors, model_list) |>
+  plot.sen <- postprocess_bcr(output, model_list) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
@@ -411,16 +438,19 @@ return(plot.sen)
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
+postprocess_eal <- function(output, model_list=c('RCMF-4-baseline-baseline')) {
   return(
     output |>
-    dplyr::filter(model %in% paste(model_list, n_floors, sep='-')) |>
+    dplyr::filter(model %in% model_list) |>
     dplyr::select(model, label, repair_cost, starts_with('loss')) |>
     dplyr::select(!loss_ratio) |>
     dplyr::rename(loss_repair_cost=repair_cost) |>
     dplyr::filter(label == 'base') |>
+    dplyr::mutate(model=factor(model, levels=rev(model_list))) |>
     tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
-    dplyr::mutate(loss_category=forcats::fct_rev(loss_category))
+    dplyr::mutate(loss_category=forcats::fct_relevel(
+                                           forcats::fct_rev(loss_category),
+                                           'loss_total', after=Inf))
   )
 }
 
@@ -429,9 +459,9 @@ postprocess_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
 #' @importFrom scales label_dollar
 #' @importFrom ggthemes scale_fill_colorblind
 #'
-plot_eal <- function(output, n_floors=4, model_list=c('B1', 'B15')) {
+plot_eal <- function(output, model_list) {
   ## PLACEHOLDER FOR PLOTTING EALs
-  plot.eal <- postprocess_eal(output, n_floors, model_list) |>
+  plot.eal <- postprocess_eal(output, model_list) |>
     ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
     geom_col(position='dodge', width=0.5) +
     ggplot2::theme_light() +
