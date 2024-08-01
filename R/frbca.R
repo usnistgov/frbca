@@ -51,12 +51,12 @@ preprocess_model <- function(eal, cost, p) {
         dplyr::left_join(cost, by=join_cols) |>
         dplyr::mutate(total_area=p$floor_area*num_stories)
     systems <- dat |> dplyr::distinct(system) |> pull()
-    for (j in 1:length(systems)) {
-      dat_j = dat |> dplyr::filter(system == systems[j])
+    for (j in systems) {
+      dat_j = dat |> dplyr::filter(system == j)
       stories <- dat_j |> dplyr::distinct(num_stories) |> pull()
-      for (i in 1:length(stories)) {
-        models[[systems[j]]][[paste(stories[i], "story", sep="-")]] <- dat_j |>
-          dplyr::filter(num_stories == stories[i])
+      for (i in stories) {
+        models[[j]][[paste(i, "story", sep="-")]] <- dat_j |>
+          dplyr::filter(num_stories == i)
       }
     }
     return(models)
@@ -345,7 +345,8 @@ frbca <- function(eal, cost, params) {
   systems <- names(models)
   for (i in systems) {
     o_i = models[[i]]
-    for (j in 1:length(models[[i]])) {
+    stories = names(o_i)
+    for (j in stories) {
       o_i[[j]] <- bca(models[[i]][[j]], params)
     }
     output[[i]] = dplyr::bind_rows(o_i)
