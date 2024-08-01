@@ -1,4 +1,4 @@
-## Code to conduct FR-BCA 
+## Code to conduct FR-BCA
 
 ## library(dplyr)
 ## library(magrittr)
@@ -97,9 +97,12 @@ pv_cost <- function(model, params) {
         ## filter out missing NS cost
         ## preprocess_cost() |>
         dplyr::mutate(
-                   pv_s=c_s,
-                   pv_ns=c_ns*(1 + 1/(1-p$delta)^(p$T/2))) |>
-         dplyr::mutate(pv_total=pv_s+pv_ns)
+                 pv_res = construction - c_ns,
+                 ## pv_s=c_s,
+                 pv_ns = c_ns
+                 ## pv_ns=c_ns*(1 + 1/(1+p$delta)^(p$T/2))
+               ) |>
+         dplyr::mutate(pv_total=pv_res+pv_ns)
     )
 }
 
@@ -179,6 +182,8 @@ pv_loss <- function(model, p) {
         )
 }
 
+#' @importFrom stats uniroot
+#'
 #' @export
 #'
 f_npv <- function(t, cf, i) {
@@ -335,16 +340,20 @@ bca <- function(model, params) {
 #' @export
 #'
 frbca <- function(eal, cost, params) {
+  output = list()
   models <- preprocess_model(eal, cost, params[['parameters']][['base']])
-  for (i in 1:length(models)) {
+  systems <- names(models)
+  for (i in systems) {
+    o_i = models[[i]]
     for (j in 1:length(models[[i]])) {
-      models[[i]][[j]] <- bca(models[[i]][[j]], params)
+      o_i[[j]] <- bca(models[[i]][[j]], params)
     }
+    output[[i]] = dplyr::bind_rows(o_i)
   }
   ## TODO: filter out NaN as base case?
   ## TODO: filter out NA for missing cost?
-  models <- dplyr::bind_rows(models)
-  return(models)
+  ## output <- dplyr::bind_rows(output)
+  return(output)
 }
 
 #' @export
@@ -352,10 +361,13 @@ frbca <- function(eal, cost, params) {
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_bcr <- function(output, n_floors=4, model_list='(IV|nsfr)') {
+postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_base=FALSE) {
   ## function to postprocess output for plotting sensitivity
+  ## drop baseline-baseline, if it exists
+  model_list = model_list[!grepl('baseline-baseline', model_list)]
+  ## create data frame for table/plot
   plot_df <- output |>
-    dplyr::filter(grepl(model_list, model) & num_stories %in% n_floors) |>
+    dplyr::filter(model %in% model_list) |>
     dplyr::select(model, bcr, label, parameter)
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
@@ -365,8 +377,14 @@ postprocess_bcr <- function(output, n_floors=4, model_list='(IV|nsfr)') {
     tidyr::pivot_wider(names_from=label, values_from=bcr) |>
     dplyr::left_join(base, by='model') |>
     dplyr::rename(bcr_low=low, bcr_high=high) |>
-    dplyr::mutate(parameter=forcats::fct_rev(parameter))
+    dplyr::mutate(
+             model=factor(model, levels=model_list),
+             parameter=forcats::fct_rev(parameter))
+  if (out_base) {
+    return(base)
+  } else {
     return(sen)
+  }
 }
 
 ###
@@ -390,12 +408,13 @@ postprocess_bcr <- function(output, n_floors=4, model_list='(IV|nsfr)') {
 #' @return Updated model table including PV(Cost)
 #' @export
 #'
-plot_bcr <- function(output, n_floors=4, model_list='(IV|nsfr)') {
+plot_bcr <- function(output, model_list) {
   ## generate plot
   system <- output |> dplyr::distinct(system) |> pull()
+  n_floors <- output |> dplyr::distinct(num_stories) |> pull()
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_bcr(output, n_floors, model_list) |>
+  plot.sen <- postprocess_bcr(output, model_list) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
@@ -419,14 +438,15 @@ return(plot.sen)
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_eal <- function(output, n_floors=4, model_list='(IV|nsfr)') {
+postprocess_eal <- function(output, model_list=c('RCMF-4-baseline-baseline')) {
   return(
     output |>
-    dplyr::filter(grepl(model_list, model) & num_stories %in% n_floors) |>
+    dplyr::filter(model %in% model_list) |>
     dplyr::select(model, label, repair_cost, starts_with('loss')) |>
     dplyr::select(!loss_ratio) |>
     dplyr::rename(loss_repair_cost=repair_cost) |>
     dplyr::filter(label == 'base') |>
+    dplyr::mutate(model=factor(model, levels=rev(model_list))) |>
     tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
     dplyr::mutate(loss_category=forcats::fct_relevel(
                                            forcats::fct_rev(loss_category),
@@ -439,9 +459,9 @@ postprocess_eal <- function(output, n_floors=4, model_list='(IV|nsfr)') {
 #' @importFrom scales label_dollar
 #' @importFrom ggthemes scale_fill_colorblind
 #'
-plot_eal <- function(output, n_floors=4, model_list='(IV|nsfr)') {
+plot_eal <- function(output, model_list) {
   ## PLACEHOLDER FOR PLOTTING EALs
-  plot.eal <- postprocess_eal(output, n_floors, model_list) |>
+  plot.eal <- postprocess_eal(output, model_list) |>
     ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
     geom_col(position='dodge', width=0.5) +
     ggplot2::theme_light() +
