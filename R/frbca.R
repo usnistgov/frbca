@@ -527,6 +527,7 @@ plot_eal_by_loss <- function(output, systems="RCMF", designs="nonstructural", st
   plot.eal <- postprocess_eal(output, systems, designs, stories) |>
     ggplot(aes(x=loss_category, y=loss, fill=design, pattern=design)) +
     geom_col(position='dodge', width=0.5) +
+    facet_wrap(~system) +
     ggplot2::theme_light() +
     ggplot2::theme(legend.position='bottom') +
     ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
@@ -540,20 +541,27 @@ plot_eal_by_loss <- function(output, systems="RCMF", designs="nonstructural", st
 #' @export
 #'
 #' @import ggplot2
-#' @importFrom scales label_dollar
-#' @importFrom ggthemes scale_fill_colorblind
+#' @importFrom scales dollar
+#' @importFrom ggthemes theme_few
 #'
 plot_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
-  ## PLACEHOLDER FOR TOTAL EALs BY SYSTEM
   plot.eal <- postprocess_eal(output, systems, designs, stories) |>
-    ggplot(aes(x=loss_category, y=loss, fill=design, pattern=design)) +
-    geom_col(position='dodge', width=0.5) +
-    ggplot2::theme_light() +
-    ggplot2::theme(legend.position='bottom') +
-    ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
-    ## TODO: Add geom_text labels for dollar amounts
-    ggplot2::coord_flip() +
-    ggthemes::scale_fill_colorblind()
+    dplyr::filter(loss_category %in% "loss_total") |>
+    dplyr::mutate(design=factor(design, levels=designs)) |>
+    ggplot(aes(x = num_stories, y = loss, fill = design)) +
+    geom_bar(
+      stat='identity',
+      width = 0.5,
+      position = 'dodge') +
+    facet_wrap(~system) +
+    labs(title = "EALs for baseline and recovery-based designs",
+       x = "Story Height",
+       y = "EAL") +
+    ggthemes::theme_few() +
+    ## theme(axis.text.y = element_text(angle = 0,  hjust = 1, size = 15)) +
+    scale_y_continuous(labels = scales::dollar) +
+    ## coord_flip() +
+    theme(legend.position = "bottom")
   return(plot.eal)
 }
 
