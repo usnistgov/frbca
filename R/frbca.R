@@ -344,11 +344,13 @@ frbca <- function(eal, cost, params) {
   models <- preprocess_model(eal, cost, params[['parameters']][['base']])
   systems <- names(models)
   for (i in systems) {
-    o_i = models[[i]]
-    stories = names(o_i)
-    for (j in stories) {
-      o_i[[j]] <- bca(models[[i]][[j]], params)
-    }
+    ## o_i = models[[i]]
+    ## stories = names(o_i)
+    stories = names(models[[i]])
+    o_i = lapply(stories, FUN=function(x) { bca(models[[i]][[x]], params) })
+    ## for (j in stories) {
+    ##   o_i[[j]] <- bca(models[[i]][[j]], params)
+    ## }
     output[[i]] = dplyr::bind_rows(o_i)
   }
   ## TODO: filter out NaN as base case?
