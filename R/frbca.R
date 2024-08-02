@@ -547,7 +547,8 @@ plot_eal_by_loss <- function(output, systems="RCMF", designs="nonstructural", st
 plot_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
   plot.eal <- postprocess_eal(output, systems, designs, stories) |>
     dplyr::filter(loss_category %in% "loss_total") |>
-    dplyr::mutate(design=factor(design, levels=designs)) |>
+    dplyr::mutate(design=factor(design, levels=designs),
+                  num_stories=factor(num_stories)) |>
     ggplot(aes(x = num_stories, y = loss, fill = design)) +
     geom_bar(
       stat='identity',
