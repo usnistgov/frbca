@@ -371,24 +371,26 @@ frbca <- function(eal, cost, params) {
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_base=FALSE) {
+postprocess_bcr <- function(output, systems="RCMF", designs="nonstructural", stories=4, out_base=FALSE) {
   ## function to postprocess output for plotting sensitivity
   ## drop baseline-baseline, if it exists
-  model_list = model_list[!grepl('baseline-baseline', model_list)]
+  designs = designs[!grepl('baseline', designs)]
   ## create data frame for table/plot
   plot_df <- output |>
-    dplyr::filter(model %in% model_list) |>
-    dplyr::select(model, bcr, label, parameter)
+    dplyr::filter((system %in% systems) &
+                  (design %in% designs) &
+                  (num_stories %in% stories)) |>
+    dplyr::select(model, system, num_stories, design, bcr, label, parameter)
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
     dplyr::select(!c(label, parameter))
   sen <- plot_df |>
     dplyr::filter(label != 'base') |>
     tidyr::pivot_wider(names_from=label, values_from=bcr) |>
-    dplyr::left_join(base, by='model') |>
+    dplyr::left_join(base, by=c('model', 'system', 'num_stories', 'design')) |>
     dplyr::rename(bcr_low=low, bcr_high=high) |>
     dplyr::mutate(
-             model=factor(model, levels=model_list),
+             design=factor(design, levels=designs),
              parameter=forcats::fct_rev(parameter))
   if (out_base) {
     return(base)
@@ -399,9 +401,51 @@ postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_ba
 
 ###
 ## Purpose:
+## Post-process data and generate BCR plots for multiple systems
+###
+#' Plot FR-BCA Outputs for Baseline Parameters
+#'
+#' @description
+#' Plot for FR-BCA outputs, for fixed story height and structural system
+#'
+#' @importFrom dplyr filter select left_join rename
+#' @importFrom tidyr pivot_wider
+#' @import ggplot2
+#'
+#'
+#' @param output Output from `frbca()`
+#' @param n_floors Number of stories (for figure title)
+#' @param system Name of structural system being plotted (default: "RCMF")
+#'
+#' @return Updated model table including PV(Cost)
+#' @export
+#'
+plot_bcr <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  ## generate plot
+  label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
+  label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
+  plot.sen <- postprocess_bcr(output, systems, designs, stories) |>
+    ggplot2::ggplot() +
+    ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
+                 linewidth = 5, colour = "red", alpha = 0.6) +
+    ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr-0.001, yend=bcr+0.001),
+                 linewidth = 5, colour = "black") +
+    ggplot2::geom_hline(yintercept=1, colour='red') +
+    ggplot2::coord_flip() +
+    ggplot2::facet_wrap(~design, ncol=1) +
+    ggplot2::theme_light() +
+    ggplot2::theme(legend.position='bottom') +
+    ggplot2::labs(
+      title=paste(label_begin, paste0(stories, '-story'), systems, label_end),
+      x='Parameter',
+      y='Benefit-cost ratio')
+return(plot.sen)
+}
+###
+## Purpose:
 ## Post-process data and generate plot for sensitivity analysis
 ###
-#' Plot FR-BCA Outputs
+#' Plot FR-BCA Outputs with Sensitivity Analysis
 #'
 #' @description
 #' Sensitivity analysis plot for FR-BCA outputs, for fixed story height and structural system
@@ -418,13 +462,11 @@ postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_ba
 #' @return Updated model table including PV(Cost)
 #' @export
 #'
-plot_bcr <- function(output, model_list) {
+plot_bcr_sensitivity <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
   ## generate plot
-  system <- output |> dplyr::distinct(system) |> pull()
-  n_floors <- output |> dplyr::distinct(num_stories) |> pull()
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_bcr(output, model_list) |>
+  plot.sen <- postprocess_bcr(output, systems, designs, stories) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
@@ -432,12 +474,11 @@ plot_bcr <- function(output, model_list) {
                  linewidth = 5, colour = "black") +
     ggplot2::geom_hline(yintercept=1, colour='red') +
     ggplot2::coord_flip() +
-    ggplot2::facet_wrap(~model, ncol=1) +
-    ## geom_hline(data=rcmf, aes(yintercept=bcr)) +
+    ggplot2::facet_wrap(~design, ncol=1) +
     ggplot2::theme_light() +
     ggplot2::theme(legend.position='bottom') +
     ggplot2::labs(
-      title=paste(label_begin, paste0(n_floors, '-story'), system, label_end),
+      title=paste(label_begin, paste0(stories, '-story'), systems, label_end),
       x='Parameter',
       y='Benefit-cost ratio')
 return(plot.sen)
