@@ -458,6 +458,7 @@ return(plot.base)
 #' @importFrom dplyr filter select left_join rename
 #' @importFrom tidyr pivot_wider
 #' @import ggplot2
+#' @importFrom ggthemes scale_fill_colorblind theme_few
 #'
 #'
 #' @param output Output from `frbca()`
@@ -527,4 +528,37 @@ plot_eal <- function(output, model_list) {
     ggplot2::coord_flip() +
     ggthemes::scale_fill_colorblind()
   return(plot.eal)
+}
+
+
+#' @export
+#'
+#' @importFrom dplyr filter select mutate
+#' @import ggplot2
+#' @importFrom scales percent
+#' @importFrom ggthemes scale_fill_colorblind theme_few
+#'
+plot_cost_delta <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  plot.cost.delta <- output |>
+    dplyr::filter((system %in% systems) &
+                  (design %in% designs) &
+                  (num_stories %in% stories)) |>
+    dplyr::select(system, design, num_stories, cost_delta) |>
+    dplyr::mutate(
+             system=factor(system, levels=systems),
+             num_stories=factor(num_stories, levels=stories),
+             design=factor(design, levels=designs)) |>
+    ggplot(aes(x = design, y = cost_delta, fill = num_stories)) +
+    geom_bar(
+      stat='identity',
+      width = 0.5,
+      position = 'dodge') +
+    facet_wrap(~system) +
+    labs(title = "Cost deltas for recovery-based design interventions",
+         x = "System",
+         y = "Cost delta") +
+    ggthemes::theme_few() +
+    scale_y_continuous(labels = scales::percent) +
+    theme(legend.position = "bottom")
+  return(plot.cost.delta)
 }
