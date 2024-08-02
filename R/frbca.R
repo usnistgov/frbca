@@ -422,25 +422,30 @@ postprocess_bcr <- function(output, systems="RCMF", designs="nonstructural", sto
 #'
 plot_bcr <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
   ## generate plot
-  label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
-  label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_bcr(output, systems, designs, stories) |>
-    ggplot2::ggplot() +
-    ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
-                 linewidth = 5, colour = "red", alpha = 0.6) +
-    ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr-0.001, yend=bcr+0.001),
-                 linewidth = 5, colour = "black") +
-    ggplot2::geom_hline(yintercept=1, colour='red') +
-    ggplot2::coord_flip() +
-    ggplot2::facet_wrap(~design, ncol=1) +
-    ggplot2::theme_light() +
-    ggplot2::theme(legend.position='bottom') +
-    ggplot2::labs(
-      title=paste(label_begin, paste0(stories, '-story'), systems, label_end),
-      x='Parameter',
-      y='Benefit-cost ratio')
-return(plot.sen)
+  ## TODO: parameterize label (ie, title)
+  label <- "BCRs for baseline and recovery-based designs"
+  plot.base <- postprocess_bcr(output, systems, designs, stories, out_base=TRUE) |>
+    dplyr::mutate(
+           system=factor(system, levels=filter_systems),
+           num_stories=factor(num_stories, levels=filter_stories),
+           design=factor(design, levels=filter_designs)
+         ) |>
+  ggplot(aes(x = design, y = bcr, fill = num_stories)) +
+  geom_bar(
+    stat='identity',
+    width = 0.5,
+    position = 'dodge') +
+  geom_hline(yintercept=1, colour="red", linetype="dashed") +
+  geom_hline(yintercept=0, colour="black", linetype="solid", linewidth=0.5) +
+  facet_wrap(~system) +
+  labs(title = label,
+       x = "Story Height",
+       y = "BCR") +
+  ggthemes::theme_few() +
+  theme(legend.position = "bottom")
+return(plot.base)
 }
+
 ###
 ## Purpose:
 ## Post-process data and generate plot for sensitivity analysis
