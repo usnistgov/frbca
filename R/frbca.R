@@ -46,10 +46,17 @@ preprocess_model <- function(eal, cost, p) {
     ## separate models by height
     ##
     join_cols = c('system', 'model', 'num_stories', 'intervention', 'design_s', 'design_ns')
+    names_structural = c("RC III", "RC IV", "backup-frame")
     models <- list()
     dat <- eal |>
-        dplyr::left_join(cost, by=join_cols) |>
-        dplyr::mutate(total_area=p$floor_area*num_stories)
+      dplyr::left_join(cost, by=join_cols) |>
+      dplyr::mutate(total_area=p$floor_area*num_stories) |>
+      dplyr::mutate(design=paste(design_s, design_ns, sep="-")) |>
+      dplyr::mutate(design=case_when(
+                      design %in% "baseline-baseline" ~ "baseline",
+                      design %in% "baseline-nsfr" ~ "nonstructural",
+                      design %in% paste(names_structural, "baseline", sep="-") ~ "structural",
+                      design %in% paste(names_structural, "nsfr", sep="-") ~ "full"))
     systems <- dat |> dplyr::distinct(system) |> pull()
     for (j in systems) {
       dat_j = dat |> dplyr::filter(system == j)
@@ -364,24 +371,26 @@ frbca <- function(eal, cost, params) {
 #' @importFrom forcats fct_rev
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_base=FALSE) {
+postprocess_bcr <- function(output, systems="RCMF", designs="nonstructural", stories=4, out_base=FALSE) {
   ## function to postprocess output for plotting sensitivity
   ## drop baseline-baseline, if it exists
-  model_list = model_list[!grepl('baseline-baseline', model_list)]
+  designs = designs[!grepl('baseline', designs)]
   ## create data frame for table/plot
   plot_df <- output |>
-    dplyr::filter(model %in% model_list) |>
-    dplyr::select(model, bcr, label, parameter)
+    dplyr::filter((system %in% systems) &
+                  (design %in% designs) &
+                  (num_stories %in% stories)) |>
+    dplyr::select(model, system, num_stories, design, bcr, label, parameter)
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
     dplyr::select(!c(label, parameter))
   sen <- plot_df |>
     dplyr::filter(label != 'base') |>
     tidyr::pivot_wider(names_from=label, values_from=bcr) |>
-    dplyr::left_join(base, by='model') |>
+    dplyr::left_join(base, by=c('model', 'system', 'num_stories', 'design')) |>
     dplyr::rename(bcr_low=low, bcr_high=high) |>
     dplyr::mutate(
-             model=factor(model, levels=model_list),
+             design=factor(design, levels=designs),
              parameter=forcats::fct_rev(parameter))
   if (out_base) {
     return(base)
@@ -392,12 +401,12 @@ postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_ba
 
 ###
 ## Purpose:
-## Post-process data and generate plot for sensitivity analysis
+## Post-process data and generate BCR plots for multiple systems
 ###
-#' Plot FR-BCA Outputs
+#' Plot FR-BCA Outputs for Baseline Parameters
 #'
 #' @description
-#' Sensitivity analysis plot for FR-BCA outputs, for fixed story height and structural system
+#' Plot for FR-BCA outputs, for fixed story height and structural system
 #'
 #' @importFrom dplyr filter select left_join rename
 #' @importFrom tidyr pivot_wider
@@ -411,13 +420,59 @@ postprocess_bcr <- function(output, model_list=c('RCMF-4-baseline-nsfr'), out_ba
 #' @return Updated model table including PV(Cost)
 #' @export
 #'
-plot_bcr <- function(output, model_list) {
+plot_bcr <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
   ## generate plot
-  system <- output |> dplyr::distinct(system) |> pull()
-  n_floors <- output |> dplyr::distinct(num_stories) |> pull()
+  ## TODO: parameterize label (ie, title)
+  label <- "BCRs for baseline and recovery-based designs"
+  plot.base <- postprocess_bcr(output, systems, designs, stories, out_base=TRUE) |>
+    dplyr::mutate(
+           system=factor(system, levels=filter_systems),
+           num_stories=factor(num_stories, levels=filter_stories),
+           design=factor(design, levels=filter_designs)
+         ) |>
+  ggplot(aes(x = design, y = bcr, fill = num_stories)) +
+  geom_bar(
+    stat='identity',
+    width = 0.5,
+    position = 'dodge') +
+  geom_hline(yintercept=1, colour="red", linetype="dashed") +
+  geom_hline(yintercept=0, colour="black", linetype="solid", linewidth=0.5) +
+  facet_wrap(~system) +
+  labs(title = label,
+       x = "Story Height",
+       y = "BCR") +
+  ggthemes::theme_few() +
+  theme(legend.position = "bottom")
+return(plot.base)
+}
+
+###
+## Purpose:
+## Post-process data and generate plot for sensitivity analysis
+###
+#' Plot FR-BCA Outputs with Sensitivity Analysis
+#'
+#' @description
+#' Sensitivity analysis plot for FR-BCA outputs, for fixed story height and structural system
+#'
+#' @importFrom dplyr filter select left_join rename
+#' @importFrom tidyr pivot_wider
+#' @import ggplot2
+#' @importFrom ggthemes scale_fill_colorblind theme_few
+#'
+#'
+#' @param output Output from `frbca()`
+#' @param n_floors Number of stories (for figure title)
+#' @param system Name of structural system being plotted (default: "RCMF")
+#'
+#' @return Updated model table including PV(Cost)
+#' @export
+#'
+plot_bcr_sensitivity <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  ## generate plot
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
-  plot.sen <- postprocess_bcr(output, model_list) |>
+  plot.sen <- postprocess_bcr(output, systems, designs, stories) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
@@ -425,12 +480,11 @@ plot_bcr <- function(output, model_list) {
                  linewidth = 5, colour = "black") +
     ggplot2::geom_hline(yintercept=1, colour='red') +
     ggplot2::coord_flip() +
-    ggplot2::facet_wrap(~model, ncol=1) +
-    ## geom_hline(data=rcmf, aes(yintercept=bcr)) +
+    ggplot2::facet_wrap(~design, ncol=1) +
     ggplot2::theme_light() +
     ggplot2::theme(legend.position='bottom') +
     ggplot2::labs(
-      title=paste(label_begin, paste0(n_floors, '-story'), system, label_end),
+      title=paste(label_begin, paste0(stories, '-story'), systems, label_end),
       x='Parameter',
       y='Benefit-cost ratio')
 return(plot.sen)
@@ -439,34 +493,41 @@ return(plot.sen)
 #' @export
 #'
 #' @importFrom forcats fct_rev
+#' @importFrom dplyr filter select rename mutate
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_eal <- function(output, model_list=c('RCMF-4-baseline-baseline')) {
+postprocess_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
   return(
     output |>
-    dplyr::filter(model %in% model_list) |>
-    dplyr::select(model, label, repair_cost, starts_with('loss')) |>
+    dplyr::filter((system %in% systems) &
+                  (design %in% designs) &
+                  num_stories %in% stories) |>
+    dplyr::select(model, system, num_stories, design, label, repair_cost, starts_with('loss')) |>
     dplyr::select(!loss_ratio) |>
     dplyr::rename(loss_repair_cost=repair_cost) |>
     dplyr::filter(label == 'base') |>
-    dplyr::mutate(model=factor(model, levels=rev(model_list))) |>
-    tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
+    dplyr::mutate(design=factor(design, levels=rev(designs))) |>
+    tidyr::pivot_longer(cols=!c('model', 'system', 'design', 'num_stories', 'label'),
+                        names_to='loss_category', values_to='loss') |>
     dplyr::mutate(loss_category=forcats::fct_relevel(
                                            forcats::fct_rev(loss_category),
                                            'loss_total', after=Inf))
   )
 }
 
+#' Plot EALs disaggregated by loss category
 #' @export
 #'
+#' @import ggplot2
 #' @importFrom scales label_dollar
 #' @importFrom ggthemes scale_fill_colorblind
 #'
-plot_eal <- function(output, model_list) {
-  ## PLACEHOLDER FOR PLOTTING EALs
-  plot.eal <- postprocess_eal(output, model_list) |>
-    ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
+plot_eal_by_loss <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  ## TODO: add facet_wrap to plot for multiple systems
+  plot.eal <- postprocess_eal(output, systems, designs, stories) |>
+    ggplot(aes(x=loss_category, y=loss, fill=design, pattern=design)) +
     geom_col(position='dodge', width=0.5) +
+    facet_wrap(~system) +
     ggplot2::theme_light() +
     ggplot2::theme(legend.position='bottom') +
     ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
@@ -474,4 +535,65 @@ plot_eal <- function(output, model_list) {
     ggplot2::coord_flip() +
     ggthemes::scale_fill_colorblind()
   return(plot.eal)
+}
+
+#' Plot Total EALs across multiple systems and stories
+#' @export
+#'
+#' @import ggplot2
+#' @importFrom scales dollar
+#' @importFrom ggthemes theme_few
+#'
+plot_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  plot.eal <- postprocess_eal(output, systems, designs, stories) |>
+    dplyr::filter(loss_category %in% "loss_total") |>
+    dplyr::mutate(design=factor(design, levels=designs)) |>
+    ggplot(aes(x = num_stories, y = loss, fill = design)) +
+    geom_bar(
+      stat='identity',
+      width = 0.5,
+      position = 'dodge') +
+    facet_wrap(~system) +
+    labs(title = "EALs for baseline and recovery-based designs",
+       x = "Story Height",
+       y = "EAL") +
+    ggthemes::theme_few() +
+    ## theme(axis.text.y = element_text(angle = 0,  hjust = 1, size = 15)) +
+    scale_y_continuous(labels = scales::dollar) +
+    ## coord_flip() +
+    theme(legend.position = "bottom")
+  return(plot.eal)
+}
+
+
+#' @export
+#'
+#' @importFrom dplyr filter select mutate
+#' @import ggplot2
+#' @importFrom scales percent
+#' @importFrom ggthemes scale_fill_colorblind theme_few
+#'
+plot_cost_delta <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  plot.cost.delta <- output |>
+    dplyr::filter((system %in% systems) &
+                  (design %in% designs) &
+                  (num_stories %in% stories)) |>
+    dplyr::select(system, design, num_stories, cost_delta) |>
+    dplyr::mutate(
+             system=factor(system, levels=systems),
+             num_stories=factor(num_stories, levels=stories),
+             design=factor(design, levels=designs)) |>
+    ggplot(aes(x = design, y = cost_delta, fill = num_stories)) +
+    geom_bar(
+      stat='identity',
+      width = 0.5,
+      position = 'dodge') +
+    facet_wrap(~system) +
+    labs(title = "Cost deltas for recovery-based design interventions",
+         x = "System",
+         y = "Cost delta") +
+    ggthemes::theme_few() +
+    scale_y_continuous(labels = scales::percent) +
+    theme(legend.position = "bottom")
+  return(plot.cost.delta)
 }
