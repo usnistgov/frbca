@@ -493,33 +493,60 @@ return(plot.sen)
 #' @export
 #'
 #' @importFrom forcats fct_rev
+#' @importFrom dplyr filter select rename mutate
 #' @importFrom tidyr pivot_wider
 #'
-postprocess_eal <- function(output, model_list=c('RCMF-4-baseline-baseline')) {
+postprocess_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
   return(
     output |>
-    dplyr::filter(model %in% model_list) |>
-    dplyr::select(model, label, repair_cost, starts_with('loss')) |>
+    dplyr::filter((system %in% systems) &
+                  (design %in% designs) &
+                  num_stories %in% stories) |>
+    dplyr::select(model, system, num_stories, design, label, repair_cost, starts_with('loss')) |>
     dplyr::select(!loss_ratio) |>
     dplyr::rename(loss_repair_cost=repair_cost) |>
     dplyr::filter(label == 'base') |>
-    dplyr::mutate(model=factor(model, levels=rev(model_list))) |>
-    tidyr::pivot_longer(cols=!c('model', 'label'), names_to='loss_category', values_to='loss') |>
+    dplyr::mutate(design=factor(design, levels=rev(designs))) |>
+    tidyr::pivot_longer(cols=!c('model', 'system', 'design', 'num_stories', 'label'),
+                        names_to='loss_category', values_to='loss') |>
     dplyr::mutate(loss_category=forcats::fct_relevel(
                                            forcats::fct_rev(loss_category),
                                            'loss_total', after=Inf))
   )
 }
 
+#' Plot EALs disaggregated by loss category
 #' @export
 #'
+#' @import ggplot2
 #' @importFrom scales label_dollar
 #' @importFrom ggthemes scale_fill_colorblind
 #'
-plot_eal <- function(output, model_list) {
-  ## PLACEHOLDER FOR PLOTTING EALs
-  plot.eal <- postprocess_eal(output, model_list) |>
-    ggplot(aes(x=loss_category, y=loss, fill=model, pattern=model)) +
+plot_eal_by_loss <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  ## TODO: add facet_wrap to plot for multiple systems
+  plot.eal <- postprocess_eal(output, systems, designs, stories) |>
+    ggplot(aes(x=loss_category, y=loss, fill=design, pattern=design)) +
+    geom_col(position='dodge', width=0.5) +
+    ggplot2::theme_light() +
+    ggplot2::theme(legend.position='bottom') +
+    ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
+    ## TODO: Add geom_text labels for dollar amounts
+    ggplot2::coord_flip() +
+    ggthemes::scale_fill_colorblind()
+  return(plot.eal)
+}
+
+#' Plot Total EALs across multiple systems and stories
+#' @export
+#'
+#' @import ggplot2
+#' @importFrom scales label_dollar
+#' @importFrom ggthemes scale_fill_colorblind
+#'
+plot_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+  ## PLACEHOLDER FOR TOTAL EALs BY SYSTEM
+  plot.eal <- postprocess_eal(output, systems, designs, stories) |>
+    ggplot(aes(x=loss_category, y=loss, fill=design, pattern=design)) +
     geom_col(position='dodge', width=0.5) +
     ggplot2::theme_light() +
     ggplot2::theme(legend.position='bottom') +
