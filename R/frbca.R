@@ -46,10 +46,17 @@ preprocess_model <- function(eal, cost, p) {
     ## separate models by height
     ##
     join_cols = c('system', 'model', 'num_stories', 'intervention', 'design_s', 'design_ns')
+    names_structural = c("RC III", "RC IV", "backup-frame")
     models <- list()
     dat <- eal |>
-        dplyr::left_join(cost, by=join_cols) |>
-        dplyr::mutate(total_area=p$floor_area*num_stories)
+      dplyr::left_join(cost, by=join_cols) |>
+      dplyr::mutate(total_area=p$floor_area*num_stories) |>
+      dplyr::mutate(design=paste(design_s, design_ns, sep="-")) |>
+      dplyr::mutate(design=case_when(
+                      design %in% "baseline-baseline" ~ "baseline",
+                      design %in% "baseline-nsfr" ~ "nonstructural",
+                      design %in% paste(names_structural, "baseline", sep="-") ~ "structural",
+                      design %in% paste(names_structural, "nsfr", sep="-") ~ "full"))
     systems <- dat |> dplyr::distinct(system) |> pull()
     for (j in systems) {
       dat_j = dat |> dplyr::filter(system == j)
