@@ -426,9 +426,9 @@ plot_bcr <- function(output, systems="RCMF", designs="nonstructural", stories=4)
   label <- "BCRs for baseline and recovery-based designs"
   plot.base <- postprocess_bcr(output, systems, designs, stories, out_base=TRUE) |>
     dplyr::mutate(
-           system=factor(system, levels=filter_systems),
-           num_stories=factor(num_stories, levels=filter_stories),
-           design=factor(design, levels=filter_designs)
+           system=factor(system, levels=systems),
+           num_stories=factor(num_stories, levels=stories),
+           design=factor(design, levels=designs)
          ) |>
   ggplot(aes(x = design, y = bcr, fill = num_stories)) +
   geom_bar(
