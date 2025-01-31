@@ -17,6 +17,13 @@ include:
 - A list of analysis parameters, including discount rate, time horizon,
   and economic analysis parameters such as business income
 
+For more details, see
+
+Fung, JF, Cook, DT, Elsibaie, S, Zhang, Y, Sattar, S, Morris, P,
+Johnson, KJ, and Burton, HV (2025). \`\`Economic Evaluation at the
+Design Phase for Functional Recovery: Integrated Design, Assessment, and
+Economic Evaluation for New Buildings,’’ In Review.
+
 ## Installation
 
 You can install the development version of frbca like so:
