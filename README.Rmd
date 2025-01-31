@@ -39,7 +39,8 @@ devtools::install_github("juanfung/frbca")
 
 ## Expected inputs
 
-To run the analysis, provide two inputs in tabular (eg, `data.frame`) form:
+The package includes the data files used for the analysis (Fung et al. 2025). To
+run the analysis, provide two inputs in tabular (eg, `data.frame`) form:
 
 ### Expected annualized losses (EALs) from a performance assessment
 
@@ -48,9 +49,12 @@ Each row is an archetype model. Expected (minimum) columns:
 ```
 | variable                 | type  | description                        |
 |--------------------------|-------|------------------------------------|
+| system                   | <chr> | structural system type             |
+| num_stories              | <dbl> | number of stories                  |
+| design_s                 | <chr> | structural design intervention     |
+| design_ns                | <chr> | nonstructural design intervention  |
 | model                    | <chr> | unique model name or id            |
 | intervention             | {0,1} | baseline design = 0; otherwise = 1 |
-| num_stories              | <dbl> | number of stories                  |
 | loss_ratio               | <dbl> | loss ratio                         |
 | repair_costs             | <dbl> | repair costs, in dollars           |
 | re_occupancy_time        | <dbl> | re-occupancy time, in days         |
@@ -62,18 +66,24 @@ Each row is an archetype model. Expected (minimum) columns:
 Each row is an archetype model. Expected (minimum) columns:
 
 ```
-| variable     | type  | description                                  |
-|--------------|-------|----------------------------------------------|
-| model        | <chr> | unique model name or id                      |
-| intervention | {0,1} | baseline design = 0; otherwise = 1           |
-| num_stories  | <dbl> | number of stories                            |
-| c_s          | <dbl> | structural construction costs, in dollars    |
-| c_ns         | <dbl> | nonstructural construction costs, in dollars |
+| variable        | type  | description                                |
+|-----------------|-------|--------------------------------------------|
+| system          | <chr> | structural system type                     |
+| num_stories     | <dbl> | number of stories                          |
+| design_s        | <chr> | structural design intervention             |
+| design_ns       | <chr> | nonstructural design intervention          |
+| model           | <chr> | unique model name or id                    |
+| intervention    | {0,1} | baseline design = 0; otherwise = 1         |
+| c_s             | <dbl> | structural construction costs (dollars)    |
+| c_ns            | <dbl> | nonstructural construction costs (dollars) |
+| construction    | <dbl> | total construction costs (dollars)         |
+| project         | <dbl> | total project costs (dollars)              |
 ```
 
 
-In addition, several parameters are required in list form. The following are the
-base parameters required under sub-list `input_param$parameters$base`:
+In addition, several parameters are required in list form. The following is an
+example of the base parameters used in our analysis
+`input_param$parameters$base`:
 
 ```
 | parameter    | type    | description                                        |
@@ -81,37 +91,42 @@ base parameters required under sub-list `input_param$parameters$base`:
 | floor_area   | <dbl>   | total square footage per story                     |
 | delta        | <delta> | discount rate                                      |
 | T            | <dbl>   | planning horizon, in years                         |
-| bi           | <dbl>   | business income                                    |
-| ri           | <dbl>   | rental income                                      |
-| displacement | <dbl>   | occupant-incurred costs of displacement            |
+| loss         | <dbl>   | economic losses (list)                             |
 | tenant       | <dbl>   | number of tenants per square foot                  |
 | recapture    | <dbl>   | recapture rate for rental income                   |
-| sc           | <sc>    | supply-chain multiplier for business income losses |
 ```
 
 In addition, parameter values for sensitivity analysis should be provided under
-the sub-list `input_param$parameters$sensitivity`. For example, sensitivity
-analysis for `delta` would be conducted based on provided values
-`input_param$parameters$sensitivity$delta$low` and
-`input_param$parameters$sensitivity$delta$high`.
+the sub-list `input_param$parameters$sensitivity`. See documentation and
+included data for more details.
 
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+This is a basic example which shows you how to conduct benefit-cost analysis for
+4-story RCMF:
 
 ```{r example, eval=FALSE}
 ## NOT RUN
 library(frbca)
 
-## assuming input data is loaded and parameters are set...
+## load package data
+input_cost = frbca::input_cost ## or: data("input_cost", package = "frbca")
+input_eal = frbca::input_eal
+input_param = fbca::input_param
 
-## run analysis
+## run analysis (returns results as list)
 output <- frbca::frbca(input_eal, input_cost, input_param)
 
-## generate results plot with sensitivity analysis
-frbca::plot_frbca(output, n_floors=4, system='RCMF')
+## plot baseline BCR for 4-story RCMF
+output |>
+  dplyr::bind_rows(output) |>
+  frbca::plot_bcr(n_floors=4, system='RCMF')
 
+## plot BCR with sensitivity analysis for 4-story RCMF
+output |>
+  dplyr::bind_rows(output) |>
+  frbca::plot_bcr_sensitivity(n_floors=4, system='RCMF')
 
 ```
 
