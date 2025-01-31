@@ -1,0 +1,19 @@
+#' Performance assessment results for FR-BCA
+#'
+#' Annualized repair costs, re-occupancy times, and functional recovery times.
+#'
+#' @format A data frame with 48 rows and 10 variables:
+#' \describe{
+#'   \item{system}{Structural System (Lateral Force Resisting System)}
+#'   \item{num_stories}{Number of stories}
+#'   \item{design_s}{Structural design intervention (baseline/RC IV/backup-frame)}
+#'   \item{design_ns}{Nonstructural design intervention (baseline/nsfr)}
+#'   \item{model}{Model name (system-num_stories-design_s-design_ns)}
+#'   \item{intervention}{Recovery-based design intervention (0/1)}
+#'   \item{loss_ratio}{Loss ratio}
+#'   \item{repair_cost}{Annualized repair cost (dollars)}
+#'   \item{re_occupancy_time}{Annualized re-occupancy time (days)}
+#'   \item{functional_recovery_time}{Annualized functional recovery time (days)}
+#' }
+#' @source Fung et al. (2025)
+"input_eal"

@@ -37,6 +37,22 @@
 ## There will be a wrapper that separates the models in the background,
 ## does all the computations for each model, and then assembles back together
 
+###
+## Purpose:
+## Format strings with underscores for pretty printing figure labels
+###
+#' Format axis tick labels without hard-coding
+#'
+#' @description
+#' Wrapper that conducts BCA for each set of models in list
+#'
+#' @importFrom stringr str_to_title
+#' @export
+#'
+label_format <- function(s) {
+  return(stringr::str_to_title(gsub("_", " ", factor(s))))
+}
+
 
 #' @export
 preprocess_model <- function(eal, cost, p) {
@@ -231,9 +247,10 @@ pv_benefit <- function(model, params, label='base') {
         dplyr::rowwise() |>
         dplyr::mutate(loss_total=sum(across(all_of(loss_cols)), na.rm=TRUE)) |>
         dplyr::ungroup() |>
-        dplyr::mutate(delta_loss=loss_total[intervention == 0] - loss_total) |>
+        dplyr::mutate(eal_diff=loss_total[intervention == 0] - loss_total) |>
+        dplyr::mutate(eal_delta=eal_diff/loss_total[intervention == 0]) |>
         dplyr::rowwise() |>
-        dplyr::mutate(benefit=f_npv(t=seq(from=0, to=p$T), cf=rep(delta_loss, length=p$T+1), i=p$delta)) |>
+        dplyr::mutate(benefit=f_npv(t=seq(from=0, to=p$T), cf=rep(eal_diff, length=p$T+1), i=p$delta)) |>
         dplyr::ungroup()
     return(
         model |>
@@ -257,7 +274,7 @@ bcr <- function(model, params, label='base') {
            dplyr::mutate(
                       bcr=benefit/cost_diff,
                       npv=benefit-cost_diff,
-                      irr=f_irr(t=seq(from=0, to=p$T), cf=c(delta_loss-cost_diff, rep(delta_loss, length=p$T))),
+                      irr=f_irr(t=seq(from=0, to=p$T), cf=c(eal_diff-cost_diff, rep(eal_diff, length=p$T))),
                     label=label) |>
            dplyr::mutate(aroi=(npv/cost_diff)/p$T) |>
            dplyr::ungroup()
@@ -384,17 +401,17 @@ postprocess_bcr <- function(output, systems="RCMF", designs="nonstructural", sto
   base <- plot_df |>
     dplyr::filter(label == 'base') |>
     dplyr::select(!c(label, parameter))
-  sen <- plot_df |>
-    dplyr::filter(label != 'base') |>
-    tidyr::pivot_wider(names_from=label, values_from=bcr) |>
-    dplyr::left_join(base, by=c('model', 'system', 'num_stories', 'design')) |>
-    dplyr::rename(bcr_low=low, bcr_high=high) |>
-    dplyr::mutate(
-             design=factor(design, levels=designs),
-             parameter=forcats::fct_rev(parameter))
   if (out_base) {
     return(base)
   } else {
+    sen <- plot_df |>
+      dplyr::filter(label != 'base') |>
+      tidyr::pivot_wider(names_from=label, values_from=bcr) |>
+      dplyr::left_join(base, by=c('model', 'system', 'num_stories', 'design')) |>
+      dplyr::rename(bcr_low=low, bcr_high=high) |>
+      dplyr::mutate(
+               design=factor(design, levels=designs),
+               parameter=forcats::fct_rev(parameter))
     return(sen)
   }
 }
@@ -437,12 +454,20 @@ plot_bcr <- function(output, systems="RCMF", designs="nonstructural", stories=4)
     position = 'dodge') +
   geom_hline(yintercept=1, colour="red", linetype="dashed") +
   geom_hline(yintercept=0, colour="black", linetype="solid", linewidth=0.5) +
-  facet_wrap(~system) +
-  labs(title = label,
-       x = "Story Height",
-       y = "BCR") +
+  facet_wrap(~system, scales="free") +
+    labs(
+      ## title = label,
+      x = "Stories",
+      y = "BCR") +
   ggthemes::theme_few() +
-  theme(legend.position = "bottom")
+    theme(
+      legend.position = "bottom",
+      legend.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)
+    ) +
+    labs(fill = "")
 return(plot.base)
 }
 
@@ -472,19 +497,36 @@ plot_bcr_sensitivity <- function(output, systems="RCMF", designs="nonstructural"
   ## generate plot
   label_begin <- 'Sensitivity Analysis: Benefit-cost ratios for'
   label_end <- 'archetypes, relative to baseline ASCE 7-16 design.'
+  ## label_param <- c("Delta", "Business Income", "Displacement", "T")
+  label_param <- c("T", "L_{DC}", "L_{BI}", "\\delta")
   plot.sen <- postprocess_bcr(output, systems, designs, stories) |>
+    dplyr::mutate(
+           system=factor(system, levels=systems),
+           num_stories=factor(num_stories, levels=stories),
+           design=factor(design, levels=designs)
+         ) |>
     ggplot2::ggplot() +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr_low, yend=bcr_high),
                  linewidth = 5, colour = "red", alpha = 0.6) +
     ggplot2::geom_segment(aes(x=parameter, xend=parameter, y=bcr-0.001, yend=bcr+0.001),
                  linewidth = 5, colour = "black") +
-    ggplot2::geom_hline(yintercept=1, colour='red') +
+    ggplot2::geom_hline(yintercept=1, colour="red", linetype="dashed") +
+    ## ggplot2::scale_x_discrete(labels=label_param) +
+    ## ggplot2::scale_x_discrete(labels=rev(label_param)) +
+    ## ggplot2::scale_x_discrete(labels=lapply(sprintf(r'($%s$)', label_param), TeX)) +
+    ggplot2::scale_x_discrete(labels=c(expression("T"), expression(L[DC]), expression(L[BI]), expression(delta))) +
     ggplot2::coord_flip() +
-    ggplot2::facet_wrap(~design, ncol=1) +
+    ggplot2::facet_wrap(system ~ design, ncol=2) +
     ggplot2::theme_light() +
-    ggplot2::theme(legend.position='bottom') +
+    theme(
+      legend.position = "bottom",
+      legend.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)
+    ) +
     ggplot2::labs(
-      title=paste(label_begin, paste0(stories, '-story'), systems, label_end),
+      ## title=paste(label_begin, paste0(stories, '-story'), paste(systems, collapse=", "), label_end),
       x='Parameter',
       y='Benefit-cost ratio')
 return(plot.sen)
@@ -502,12 +544,13 @@ postprocess_eal <- function(output, systems="RCMF", designs="nonstructural", sto
     dplyr::filter((system %in% systems) &
                   (design %in% designs) &
                   num_stories %in% stories) |>
-    dplyr::select(model, system, num_stories, design, label, repair_cost, starts_with('loss')) |>
+    dplyr::select(model, system, num_stories, design, label, total_area, project, repair_cost, starts_with('loss')) |>
+    dplyr::mutate(project=project/50) |>
     dplyr::select(!loss_ratio) |>
     dplyr::rename(loss_repair_cost=repair_cost) |>
     dplyr::filter(label == 'base') |>
     dplyr::mutate(design=factor(design, levels=rev(designs))) |>
-    tidyr::pivot_longer(cols=!c('model', 'system', 'design', 'num_stories', 'label'),
+    tidyr::pivot_longer(cols=!c('model', 'system', 'design', 'num_stories', 'label', 'total_area', 'project'),
                         names_to='loss_category', values_to='loss') |>
     dplyr::mutate(loss_category=forcats::fct_relevel(
                                            forcats::fct_rev(loss_category),
@@ -524,16 +567,35 @@ postprocess_eal <- function(output, systems="RCMF", designs="nonstructural", sto
 #'
 plot_eal_by_loss <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
   ## TODO: add facet_wrap to plot for multiple systems
+  ## TODO: do not hardcode axis tick labels, apply formatting
+  labels_x = c("Total", "Business Income", "Displacement", "Rental Income", "Repair Cost", "Value Added")
   plot.eal <- postprocess_eal(output, systems, designs, stories) |>
+    dplyr::mutate(
+             system=factor(system, levels=systems),
+             design=factor(design, levels=rev(designs)),
+             num_stories=factor(num_stories)) |>
     ggplot(aes(x=loss_category, y=loss, fill=design, pattern=design)) +
-    geom_col(position='dodge', width=0.5) +
+    geom_col(position='dodge', width=0.75) +
     facet_wrap(~system) +
-    ggplot2::theme_light() +
-    ggplot2::theme(legend.position='bottom') +
-    ggplot2::scale_y_continuous(labels = scales::label_dollar()) +
+    ## ggplot2::theme_light() +
+    ## ggplot2::scale_x_discrete(labels=label_format()) +
+    ggplot2::scale_x_discrete(labels=rev(labels_x)) +
+    ggplot2::scale_y_continuous(labels = scales::label_dollar(scale_cut=scales::cut_short_scale())) +
     ## TODO: Add geom_text labels for dollar amounts
     ggplot2::coord_flip() +
-    ggthemes::scale_fill_colorblind()
+    ggthemes::theme_few(base_size=10) +
+    ggplot2::scale_fill_manual(breaks=rev, values=rev(ggthemes::colorblind_pal()(length(systems)))) +
+    theme(
+      legend.position = "bottom",
+      legend.text = element_text(size = 10),
+      legend.title = element_text(size = 12),
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12)
+    ) +
+    ggplot2::labs(
+               fill = "",
+               x = "Loss",
+               y = "Loss Category")
   return(plot.eal)
 }
 
@@ -544,25 +606,36 @@ plot_eal_by_loss <- function(output, systems="RCMF", designs="nonstructural", st
 #' @importFrom scales dollar
 #' @importFrom ggthemes theme_few
 #'
-plot_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4) {
+plot_eal <- function(output, systems="RCMF", designs="nonstructural", stories=4, w=FALSE) {
   plot.eal <- postprocess_eal(output, systems, designs, stories) |>
     dplyr::filter(loss_category %in% "loss_total") |>
-    dplyr::mutate(design=factor(design, levels=designs),
-                  num_stories=factor(num_stories)) |>
+    ## dplyr::mutate(loss=ifelse(w==TRUE, loss/project, loss)) |>
+    dplyr::mutate(
+             system=factor(system, levels=systems),
+             design=factor(design, levels=designs),
+             num_stories=factor(num_stories)) |>
     ggplot(aes(x = num_stories, y = loss, fill = design)) +
     geom_bar(
       stat='identity',
       width = 0.5,
       position = 'dodge') +
     facet_wrap(~system) +
-    labs(title = "EALs for baseline and recovery-based designs",
-       x = "Story Height",
-       y = "EAL") +
+    ggplot2::scale_y_continuous(labels = scales::label_dollar(scale_cut=scales::cut_short_scale())) +
+    labs(
+      ## title = "EALs for baseline and recovery-based designs",
+      x = "Stories",
+      y = "EAL") +
     ggthemes::theme_few() +
     ## theme(axis.text.y = element_text(angle = 0,  hjust = 1, size = 15)) +
-    scale_y_continuous(labels = scales::dollar) +
     ## coord_flip() +
-    theme(legend.position = "bottom")
+    theme(
+      legend.position = "bottom",
+      legend.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)
+    ) +
+    labs(fill = "")
   return(plot.eal)
 }
 
@@ -590,11 +663,19 @@ plot_cost_delta <- function(output, systems="RCMF", designs="nonstructural", sto
       width = 0.5,
       position = 'dodge') +
     facet_wrap(~system) +
-    labs(title = "Cost deltas for recovery-based design interventions",
-         x = "System",
-         y = "Cost delta") +
-    ggthemes::theme_few() +
-    scale_y_continuous(labels = scales::percent) +
-    theme(legend.position = "bottom")
+    labs(
+      ## title = "Cost deltas for recovery-based design interventions",
+      x = "System",
+      y = "Cost delta") +
+    ggthemes::theme_few(base_size=12) +
+    ggplot2::scale_y_continuous(labels = scales::percent) +
+    theme(
+      legend.position = "bottom",
+      legend.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      axis.title.x = element_text(size = 13),
+      axis.title.y = element_text(size = 13)
+    ) +
+    ggplot2::labs(fill = "Stories")
   return(plot.cost.delta)
 }

@@ -4,7 +4,13 @@
 \alias{plot_eal}
 \title{Plot Total EALs across multiple systems and stories}
 \usage{
-plot_eal(output, systems = "RCMF", designs = "nonstructural", stories = 4)
+plot_eal(
+  output,
+  systems = "RCMF",
+  designs = "nonstructural",
+  stories = 4,
+  w = FALSE
+)
 }
 \description{
 Plot Total EALs across multiple systems and stories
