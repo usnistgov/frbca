@@ -104,14 +104,23 @@ This is a basic example which shows you how to solve a common problem:
 ## NOT RUN
 library(frbca)
 
-## assuming input data is loaded and parameters are set...
+## load package data
+input_cost = frbca::input_cost ## or: data("input_cost", package = "frbca")
+input_eal = frbca::input_eal
+input_param = fbca::input_param
 
-## run analysis
+## run analysis (returns results as list)
 output <- frbca::frbca(input_eal, input_cost, input_param)
 
-## generate results plot with sensitivity analysis
-frbca::plot_frbca(output, n_floors=4, system='RCMF')
+## plot baseline BCR for 4-story RCMF
+output |>
+  dplyr::bind_rows(output) |>
+  frbca::plot_bcr(n_floors=4, system='RCMF')
 
+## plot BCR with sensitivity analysis for 4-story RCMF
+output |>
+  dplyr::bind_rows(output) |>
+  frbca::plot_bcr_sensitivity(n_floors=4, system='RCMF')
 
 ```
 
