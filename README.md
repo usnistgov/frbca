@@ -101,7 +101,8 @@ analysis for 4-story RCMF:
 library(frbca)
 
 ## load package data
-input_cost = frbca::input_cost ## or: data("input_cost", package = "frbca")
+## Alternatively: data("input_cost", package = "frbca")
+input_cost = frbca::input_cost
 input_eal = frbca::input_eal
 input_param = fbca::input_param
 
