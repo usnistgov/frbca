@@ -167,3 +167,9 @@ unavailability or interruption of operation. This software is not intended to be
 used in any situation where a failure could cause risk of injury or damage to
 property. The software developed by NIST employees is not subject to copyright
 protection within the United States.
+
+Certain equipment, instruments, software, or materials are identified here in
+order to specify the data/code adequately.  Such identification is not intended
+to imply recommendation or endorsement of any product or service by NIST, nor is
+it intended to imply that the materials or equipment identified are necessarily
+the best available for the purpose.
