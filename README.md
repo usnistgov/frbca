@@ -93,8 +93,12 @@ documentation and included data for more details.
 
 ## Example
 
-This is a basic example which shows you how to conduct benefit-cost
-analysis for 4-story RCMF:
+For reproducibility, the package includes data for the costs, EALs, and
+parameters used in Fung et al. (2025), including 4-, 8-, and 12-story
+RCMF, RCSW, and SMF, and 4- and 12-story BRBF designs.
+
+This is a basic example which shows you how can load data for 4-story
+RCMF and conduct benefit-cost analysis:
 
 ``` r
 ## NOT RUN
