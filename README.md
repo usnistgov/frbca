@@ -162,3 +162,42 @@ here in order to specify the data/code adequately.  Such identification
 is not intended to imply recommendation or endorsement of any product or
 service by NIST, nor is it intended to imply that the materials or
 equipment identified are necessarily the best available for the purpose.
+
+## Directory structure
+
+For informational purposes, here is the list of files in the current
+development version:
+
+    .
+    ├── data # cost, EAL, and parameter data included in package
+    │   ├── input_cost.rda
+    │   ├── input_eal.rda
+    │   └── input_param.rda
+    ├── data-raw # raw CSV and scripts to generate package data
+    │   ├── input_cost.csv
+    │   ├── input_cost.R
+    │   ├── input_eal.csv
+    │   ├── input_eal.R
+    │   └── input_param.R
+    ├── DESCRIPTION
+    ├── LICENSE
+    ├── LICENSE.md
+    ├── man # R documentation files
+    │   ├── frbca.Rd
+    │   ├── input_cost.Rd
+    │   ├── input_eal.Rd
+    │   ├── input_param.Rd
+    │   ├── label_format.Rd
+    │   ├── plot_bcr_sensitivity.Rd
+    │   ├── plot_bcr.Rd
+    │   ├── plot_eal_by_loss.Rd
+    │   ├── plot_eal.Rd
+    │   └── pv_cost.Rd
+    ├── NAMESPACE
+    ├── R # package code
+    │   ├── frbca.R
+    │   ├── input_cost.R
+    │   ├── input_eal.R
+    │   └── input_param.R
+    ├── README.md
+    └── README.Rmd # source for generating README.md
