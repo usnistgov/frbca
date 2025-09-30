@@ -35,7 +35,7 @@ tenant_per_area = 0.0197113
 ## {total_floors, bi_low, bi_high, ri, displacement, tenant}
 ## Provided defaults:
 ## {delta, T, recapture, sc}
-input_param <- list(
+bca_inputs <- list(
     model = input_model_name,
     parameters = list(
         base=list(
@@ -46,10 +46,13 @@ input_param <- list(
             loss_business_income=(bi_low+bi_high)/2,
             loss_rental_income=rent,
             loss_displacement=112,
+            ##loss_displacement=list(
+            ##  recurring=112,
+            ##  fixed=112),
             ## tenant=0.021,
             ## recapture=rho,
             ## loss_supply_chain=4,
-            loss_value_added=va * (1- delta_va)
+            loss_value_added=va * (delta_va)
           ),
             ## bi=(bi_low+bi_high)/2,
             ## ri=rent,
@@ -66,9 +69,15 @@ input_param <- list(
             ## loss_supply_chain=list(
             ##   low=2,
             ##   high=10),
-            loss_displacement=list(
-              low=53,
-              high=275)
+            ## loss_displacement=list(
+            ##   low=list(recurring=53, fixed=53),
+            ##   high=list(recurring=275, fixed=275)),
+            loss_rental_income=list(
+              low=rent_low,
+              high=rent_high),
+            loss_value_added=list(
+              low=va * (delta_va),
+              high= va * (delta_va_high))
             ),
           ## displacement=list(
           ##   low=53,
