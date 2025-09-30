@@ -10,10 +10,13 @@ cpi_bi = 307.1/257 # analysis year = 2023 / base year = 2019
 cpi_ri = 307.1/240 # analysis year = 2023 / base year = 2016
 bi_low = 0.75 ## 0.76 * cpi_bi
 bi_high = 5.42 ## 5.53 * cpi_bi
-rent = 22.25 / days * cpi_ri
+rent = 22.06 / days * cpi_ri
+rent_low = 16.15 / days * cpi_ri
+rent_high = 31.73 / days * cpi_ri
 rho = 0.87
 va = 7.97 ## 7.25 * cpi_bi
 delta_va = 0.035
+delta_va_high = 0.12
 tenant_per_area = 0.0197113
 
 ## Parameters

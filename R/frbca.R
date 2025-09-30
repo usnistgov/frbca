@@ -159,11 +159,14 @@ compute_loss <- function(loss_name, p, occ_t, fr_t) {
   if (loss_name == 'loss_displacement') {
     ## loss_val = loss_val * p[['tenant']]
     loss_val = loss * p[['tenant']] * fr_t
+    ##loss_val = loss[['recurring']] * p[['tenant']] * fr_t
   } else if (grepl('(business_income|value_added)', loss_name)) {
     ## loss_val = loss_val * (1-p[['recapture']])
     loss_val = loss * (1-p[['recapture']]) * fr_t
   } else if (loss_name == 'loss_rental_income') {
-    loss_val = loss * occ_t
+    ##npv_rent = f_npv(t=seq(from=0, to=10), cf=rep(loss * 365, length=11), i=p$delta)
+    npv_rent = 0
+    loss_val = (npv_rent) + (loss * fr_t)
   } else {
     loss_val = NA
   }
@@ -514,7 +517,9 @@ plot_bcr_sensitivity <- function(output, systems="RCMF", designs="nonstructural"
     ## ggplot2::scale_x_discrete(labels=label_param) +
     ## ggplot2::scale_x_discrete(labels=rev(label_param)) +
     ## ggplot2::scale_x_discrete(labels=lapply(sprintf(r'($%s$)', label_param), TeX)) +
-    ggplot2::scale_x_discrete(labels=c(expression("T"), expression(L[DC]), expression(L[BI]), expression(delta))) +
+    ## TEMP COMMENTING OUT SENSITIVITY PLOT LABELS WHILE I REVISE CODE FOR OTHER LOSS CALCULATIONS... ##
+    ##ggplot2::scale_x_discrete(labels=c(expression("T"), expression(L[DC]), expression(L[BI]), expression(delta))) +
+    ## TEMP ##
     ggplot2::coord_flip() +
     ggplot2::facet_wrap(system ~ design, ncol=2) +
     ggplot2::theme_light() +
